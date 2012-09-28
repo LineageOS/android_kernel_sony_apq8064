@@ -86,13 +86,13 @@
 #endif
 #include "rndis.c"
 #endif
-#include "u_ether.c"
 #include "u_bam_data.c"
 #ifdef CONFIG_USB_ANDROID_MBIM
 #include "f_mbim.c"
 #endif
 #include "f_qc_ecm.c"
 #include "f_qc_rndis.c"
+#include "u_ether.c"
 #include "u_qc_ether.c"
 #ifdef CONFIG_TARGET_CORE
 #include "f_tcm.c"
