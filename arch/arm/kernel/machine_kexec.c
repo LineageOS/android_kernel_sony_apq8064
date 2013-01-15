@@ -115,6 +115,8 @@ void machine_kexec(struct kimage *image)
 		return;
 	}
 
+	arch_kexec();
+
 	page_list = image->head & PAGE_MASK;
 
 	/* we need both effective and real address here */
