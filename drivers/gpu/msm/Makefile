@@ -9,6 +9,7 @@ msm_kgsl_core-y = \
 	kgsl_mmu.o \
 	kgsl_gpummu.o \
 	kgsl_iommu.o \
+	kgsl_pwrscale_conservative.o \
 	kgsl_snapshot.o
 
 msm_kgsl_core-$(CONFIG_DEBUG_FS) += kgsl_debugfs.o
@@ -46,3 +47,5 @@ msm_z180-objs = $(msm_z180-y)
 obj-$(CONFIG_MSM_KGSL) += msm_kgsl_core.o
 obj-$(CONFIG_MSM_KGSL) += msm_adreno.o
 obj-$(CONFIG_MSM_KGSL_2D) += msm_z180.o
+
+CFLAGS_kgsl_pwrscale_conservative.o += -DDEBUG
