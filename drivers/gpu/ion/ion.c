@@ -1353,6 +1353,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case ION_IOC_ALLOC:
+    case ION_IOC_ALLOC_COMPAT:
 	{
 		struct ion_allocation_data data;
 
