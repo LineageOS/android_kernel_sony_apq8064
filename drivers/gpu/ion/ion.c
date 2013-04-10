@@ -1353,6 +1353,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case ION_IOC_ALLOC:
+	case ION_IOC_ALLOC_COMPAT:
 	{
 		struct ion_allocation_data data;
 
@@ -1406,6 +1407,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	}
 	case ION_IOC_IMPORT:
+	case ION_IOC_IMPORT_COMPAT:
 	{
 		struct ion_fd_data data;
 		int ret = 0;
@@ -1435,8 +1437,11 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return dev->custom_ioctl(client, data.cmd, data.arg);
 	}
 	case ION_IOC_CLEAN_CACHES:
+	case ION_IOC_CLEAN_CACHES_COMPAT:
 	case ION_IOC_INV_CACHES:
+	case ION_IOC_INV_CACHES_COMPAT:
 	case ION_IOC_CLEAN_INV_CACHES:
+	case ION_IOC_CLEAN_INV_CACHES_COMPAT:
 	{
 		struct ion_flush_data data;
 		unsigned long start, end;
@@ -1479,6 +1484,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	}
 	case ION_IOC_GET_FLAGS:
+	case ION_IOC_GET_FLAGS_COMPAT:
 	{
 		struct ion_flag_data data;
 		int ret;
