@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAe3///vk\u003d",
+        "filename": "drivers/gpu/msm/kgsl_pwrscale_conservative.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 6112
+      },
+      "writtenOn": "2013-04-23T23:18:25Z",
+      "side": 1,
+      "message": "If clause needs to be removed",
+      "revId": "b75fdf66175e6716b50a2fcef92918b31e1fee5a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
