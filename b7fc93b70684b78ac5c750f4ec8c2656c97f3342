@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAfH//+Pg\u003d",
+        "filename": "arch/arm/mach-msm/board-sony_fusion3-display.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 19
+      },
+      "writtenOn": "2013-04-30T01:36:38Z",
+      "side": 1,
+      "message": "according to sony changes only mdp_bw_ib_factor must be raised\n\nmdp_bw_ab_factor \u003d 115\n\nmdp_bw_ib_factor \u003d 205",
+      "revId": "b7fc93b70684b78ac5c750f4ec8c2656c97f3342",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
