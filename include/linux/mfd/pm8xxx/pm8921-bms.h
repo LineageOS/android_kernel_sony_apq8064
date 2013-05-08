@@ -1,5 +1,5 @@
 /* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
- * Copyright (C) 2012 Sony Mobile Communications AB.
+ * Copyright (C) 2012-2013, Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -203,6 +203,11 @@ void pm8921_bms_charging_began(void);
  */
 void pm8921_bms_charging_end(int is_battery_full);
 
+/**
+ * pm8921_bms_cc_uah - function to get the coulomb counter value (uah)
+ */
+int pm8921_bms_cc_uah(int *cc_uah);
+
 void pm8921_bms_calibrate_hkadc(void);
 /**
  * pm8921_bms_get_simultaneous_battery_voltage_and_current
@@ -241,6 +246,10 @@ static inline int pm8921_bms_get_init_fcc(void)
 	return -ENXIO;
 }
 static inline int pm8921_bms_get_fcc(void)
+{
+	return -ENXIO;
+}
+static inline int pm8921_bms_cc_uah(int *cc_uah)
 {
 	return -ENXIO;
 }
