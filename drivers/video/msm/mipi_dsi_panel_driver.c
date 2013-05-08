@@ -728,6 +728,7 @@ static int get_pcc_data(struct msm_fb_data_type *mfd)
 		color_calib->g.g	= cfg_rgb->g;
 		color_calib->b.b	= cfg_rgb->b;
 		dsi_data->pcc_config	= color_calib;
+		pcc_cfg_ptr		= color_calib;
 
 		dev_dbg(dev, "%s (%d): r=%x g=%x b=%x area=%d ct=%d ud=%d vd=%d",
 			__func__, __LINE__, cfg_rgb->r, cfg_rgb->g, cfg_rgb->b,
@@ -875,6 +876,7 @@ static int __devexit mipi_dsi_panel_remove(struct platform_device *pdev)
 	mipi_dsi_buf_release(&dsi_data->tx_buf);
 	mipi_dsi_buf_release(&dsi_data->rx_buf);
 	kfree(dsi_data);
+	pcc_cfg_ptr = NULL;
 	kfree(color_calib);
 	return 0;
 }
