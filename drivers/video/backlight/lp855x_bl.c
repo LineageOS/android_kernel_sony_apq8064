@@ -2,7 +2,7 @@
  * TI LP855x Backlight Driver
  *
  * Copyright (C) 2011 Texas Instruments
- * Copyright (C) 2012 Sony Mobile Communications AB.
+ * Copyright (C) 2012-2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,6 +18,7 @@
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include <linux/lp855x.h>
+#include <linux/delay.h>
 
 #define BRIGHTNESS_CTRL 0x00
 #define DEVICE_CTRL     0x01
@@ -29,6 +30,9 @@
 
 #define CFG98_CTRL      0x98
 #define IBOOST_LIM_2X_MASK   0x80
+
+#define CFG3_CTRL       0xA3
+#define SLOPE_FILTER_MASK    0x7C
 
 /* Enable backlight. Only valid when BRT_MODE=10(I2C only) */
 #define ENABLE_BL       1
@@ -66,6 +70,8 @@
 #define EEPROM_END   0xA7
 #define EPROM_START  0x98
 #define EPROM_END    0xAF
+
+#define LP855x_PWR_DELAY_US 12000
 
 enum lp855x_chip_id {
 	LP8550,
@@ -350,11 +356,8 @@ static void lp855x_init_device(struct lp855x *lp)
 	int i, ret;
 	struct lp855x_platform_data *pd = lp->pdata;
 
-	val = pd->initial_brightness;
-	ret = lp855x_write_byte(lp, BRIGHTNESS_CTRL, val);
-
 	val = pd->device_control;
-	ret |= lp855x_write_byte(lp, DEVICE_CTRL, val);
+	ret = lp855x_write_byte(lp, DEVICE_CTRL, val);
 
 	if (pd->load_new_rom_data && pd->size_program) {
 		for (i = 0; i < pd->size_program; i++) {
@@ -373,9 +376,24 @@ static void lp855x_init_device(struct lp855x *lp)
 			ret |= lp855x_write_byte(lp, addr, val);
 		}
 	}
+	ret |= lp855x_write_byte(lp, CFG3_CTRL, pd->cfg3);
 
 	if (ret)
 		dev_err(lp->dev, "i2c write err\n");
+}
+
+static int lp855x_set_slope_filter(struct lp855x *lp, bool enable)
+{
+	u8 val = lp->pdata->cfg3;
+	int rc = 0;
+
+	if (enable) {
+		rc = lp855x_write_byte(lp, CFG3_CTRL, val);
+	} else {
+		val &= ~SLOPE_FILTER_MASK;
+		rc = rc ? rc : lp855x_write_byte(lp, CFG3_CTRL, val);
+	}
+	return rc;
 }
 
 static int lp855x_bl_update_status(struct backlight_device *bl)
@@ -383,12 +401,24 @@ static int lp855x_bl_update_status(struct backlight_device *bl)
 	struct lp855x *lp = bl_get_data(bl);
 	enum lp855x_brightness_ctrl_mode mode = lp->pdata->mode;
 	int br;
+	static int stored_br;
 
 	mutex_lock(&lp->xfer_lock);
 	if (bl->props.state & BL_CORE_SUSPENDED)
 		bl->props.brightness = 0;
 
 	br = bl->props.brightness;
+
+	if (bl->props.state & BL_CORE_FBBLANK)
+		br = 0;
+
+	if (!br && stored_br)
+		(void)lp855x_set_slope_filter(lp, false);
+	else if (br && !stored_br)
+		(void)lp855x_set_slope_filter(lp, true);
+
+	stored_br = br;
+
 	if (mode == PWM_BASED) {
 		struct lp855x_pwm_data *pd = &lp->pdata->pwm_data;
 		int max_br = bl->props.max_brightness;
@@ -481,6 +511,9 @@ static int lp855x_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 			ret = pdata->power_on(&cl->dev);
 			if (ret)
 				goto err_setup;
+			else
+				usleep_range(LP855x_PWR_DELAY_US,
+					LP855x_PWR_DELAY_US + 1000);
 		}
 
 	}
@@ -504,6 +537,11 @@ static int lp855x_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 	mutex_init(&lp->xfer_lock);
 
 	lp855x_init_device(lp);
+	ret = lp855x_write_byte(lp, BRIGHTNESS_CTRL, pdata->initial_brightness);
+	if (ret) {
+		dev_err(lp->dev, "can't set initial brightness (%d)\n" , ret);
+		goto err_dev;
+	}
 	ret = lp855x_backlight_register(lp);
 	if (ret) {
 		dev_err(lp->dev, "can not register backlight device."
@@ -562,6 +600,9 @@ int lp855x_resume(struct i2c_client *cl)
 		ret = pdata->power_on(&cl->dev);
 		if (ret)
 			goto err;
+		else
+			usleep_range(LP855x_PWR_DELAY_US,
+				LP855x_PWR_DELAY_US + 1000);
 	}
 	lp855x_init_device(lp);
 	backlight_update_status(lp->bl);
