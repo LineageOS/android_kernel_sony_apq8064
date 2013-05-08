@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2007 Google Incorporated
  * Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2012 Sony Mobile Communications AB.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -920,6 +921,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_panel_data *pdata = NULL;
 	int ret = 0;
+	struct fb_event event;
 
 	if (!op_enable)
 		return -EPERM;
@@ -929,6 +931,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 		printk(KERN_ERR "msm_fb_blank_sub: no panel operation detected!\n");
 		return -ENODEV;
 	}
+
+	event.info = info;
+	event.data = &blank_mode;
 
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
@@ -956,6 +961,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	default:
 		if (mfd->panel_power_on) {
 			int curr_pwr_state;
+
+			if (mfd->index == 0)
+				fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 
 #ifdef CONFIG_DEBUG_FS
 			mutex_lock(&mfd->power_lock);
@@ -1737,6 +1745,8 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 			default:
 				break;
 			}
+			if ((ret == 0) && (mfd->index == 0))
+				fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 		}
 	}
 #endif /* MSM_FB_ENABLE_DBGFS */

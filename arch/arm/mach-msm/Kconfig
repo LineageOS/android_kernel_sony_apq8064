@@ -919,7 +919,7 @@ config MACH_MPQ8064_DTV
 
 config MACH_SONY_FUSION3
 	depends on ARCH_APQ8064
-	bool "Sony Mobile CDB"
+	bool "Sony Mobile"
 	help
 	  Support for the Sony Mobile Fusion3 devices.
 
@@ -929,11 +929,23 @@ config MACH_SONY_YUGA
 	help
 	  Support for the Sony Mobile Yuga device.
 
+config MACH_SONY_YUGA_DCM
+	depends on MACH_SONY_FUSION3
+	bool "Sony Mobile Yuga DCM"
+	help
+	  Support for the Sony Mobile Yuga Docomo device.
+
 config MACH_SONY_ODIN
 	depends on MACH_SONY_FUSION3
 	bool "Sony Mobile Odin"
 	help
 	  Support for the Sony Mobile Odin device.
+
+config MACH_SONY_POLLUX_DCM
+	depends on ARCH_APQ8064
+	bool "Sony Mobile POLLUX DCM"
+	help
+	  Support for the Sony Mobile Pollux Docomo device.
 
 config MACH_FSM9XXX_SURF
 	depends on ARCH_FSM9XXX

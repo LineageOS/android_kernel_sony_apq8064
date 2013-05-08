@@ -77,7 +77,7 @@ struct msm_hsic_hcd {
 	struct clk		*phy_clk;
 	struct clk		*cal_clk;
 	struct regulator	*hsic_vddcx;
-	bool			async_int;
+	atomic_t		async_int;
 	atomic_t                in_lpm;
 	struct wake_lock	wlock;
 	int			peripheral_status_irq;
@@ -325,26 +325,6 @@ static void dump_hsic_regs(struct usb_hcd *hcd)
 				readl_relaxed(hcd->regs + i + 8),
 				readl_relaxed(hcd->regs + i + 0xc));
 }
-
-static ssize_t override_wakelock_store(
-		struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t size)
-{
-	long value;
-
-	if (kstrtol(buf, 10, &value))
-		return -EINVAL;
-
-	if (__mehci) {
-		if (value == 1)
-			wake_lock(&__mehci->wlock);
-		else if (value == 0)
-			wake_unlock(&__mehci->wlock);
-	}
-	return size;
-}
-
-static DEVICE_ATTR(override_wakelock, S_IWUSR, NULL, override_wakelock_store);
 
 #define ULPI_IO_TIMEOUT_USEC	(10 * 1000)
 
@@ -894,8 +874,8 @@ skip_phy_resume:
 
 	atomic_set(&mehci->in_lpm, 0);
 
-	if (mehci->async_int) {
-		mehci->async_int = false;
+	if (atomic_read(&mehci->async_int)) {
+		atomic_set(&mehci->async_int, 0);
 		pm_runtime_put_noidle(mehci->dev);
 		enable_irq(hcd->irq);
 	}
@@ -930,12 +910,18 @@ static irqreturn_t msm_hsic_irq(struct usb_hcd *hcd)
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 	u32			status;
+	int 			ret;
 
 	if (atomic_read(&mehci->in_lpm)) {
 		disable_irq_nosync(hcd->irq);
 		dev_dbg(mehci->dev, "phy async intr\n");
-		mehci->async_int = true;
-		pm_runtime_get(mehci->dev);
+
+		ret = pm_runtime_get(mehci->dev);
+		if ((ret == 1) || (ret == -EINPROGRESS))
+			pm_runtime_put_noidle(mehci->dev);
+		else
+			atomic_set(&mehci->async_int, 1);
+
 		return IRQ_HANDLED;
 	}
 
@@ -1792,8 +1778,6 @@ static int __devinit ehci_hsic_msm_probe(struct platform_device *pdev)
 
 	__mehci = mehci;
 
-	device_create_file(&pdev->dev, &dev_attr_override_wakelock);
-
 	if (pdata && pdata->swfi_latency)
 		pm_qos_add_request(&mehci->pm_qos_req_dma,
 			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
@@ -1870,7 +1854,6 @@ static int __devexit ehci_hsic_msm_remove(struct platform_device *pdev)
 	msm_hsic_init_vddcx(mehci, 0);
 
 	msm_hsic_init_clocks(mehci, 0);
-	device_remove_file(&pdev->dev, &dev_attr_override_wakelock);
 	wake_lock_destroy(&mehci->wlock);
 	iounmap(hcd->regs);
 	usb_put_hcd(hcd);
@@ -1905,7 +1888,7 @@ static int msm_hsic_pm_suspend_noirq(struct device *dev)
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 
-	if (mehci->async_int) {
+	if (atomic_read(&mehci->async_int)) {
 		dev_dbg(dev, "suspend_noirq: Aborting due to pending interrupt\n");
 		return -EBUSY;
 	}
@@ -1932,7 +1915,8 @@ static int msm_hsic_pm_resume(struct device *dev)
 	 * start I/O.
 	 */
 	if (!atomic_read(&mehci->pm_usage_cnt) &&
-			pm_runtime_suspended(dev))
+			pm_runtime_suspended(dev) &&
+			!atomic_read(&mehci->async_int))
 		return 0;
 
 	ret = msm_hsic_resume(mehci);

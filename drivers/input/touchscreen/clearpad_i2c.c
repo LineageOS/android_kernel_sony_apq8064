@@ -3,7 +3,7 @@
  * Copyright (C) 2011 Sony Ericsson Mobile Communications AB.
  * Copyright (c) 2011 Synaptics Incorporated
  * Copyright (c) 2011 Unixphere
- * Copyright (C) 2012 Sony Mobile Communications AB.
+ * Copyright (C) 2012 - 2013 Sony Mobile Communications AB.
  *
  * Author: Yusuke Yoshimura <Yusuke.Yoshimura@sonyericsson.com>
  *
@@ -25,6 +25,8 @@
 #define CLEARPAD_PAGE_SELECT_REGISTER 0xff
 #define CLEARPAD_PAGE(addr) (((addr) >> 8) & 0xff)
 
+#define TIMEOUT_MS 100
+
 struct clearpad_i2c {
 	struct platform_device *pdev;
 	unsigned int page;
@@ -42,7 +44,11 @@ static int clearpad_i2c_read(struct device *dev, u8 reg, u8 *buf, u8 len)
 	int off;
 
 	/* If i2c is still suspended, wait until we are resumed */
-	wait_event(this->wq, (0 == atomic_cmpxchg(&this->suspended, 0, 1)));
+	rc = wait_event_timeout(this->wq,
+		(0 == atomic_cmpxchg(&this->suspended, 0, 1)),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (rc == 0)
+		dev_info(dev, "%s: timeout occurs\n", __func__);
 	dev_dbg(dev, "%s: i2c no longer suspended\n", __func__);
 
 	for (off = 0; off < len; off += rsize) {
@@ -69,7 +75,11 @@ static int clearpad_i2c_write(struct device *dev, u8 reg, const u8 *buf, u8 len)
 	u8 i;
 
 	/* If i2c is still suspended, wait until we are resumed */
-	wait_event(this->wq, (0 == atomic_cmpxchg(&this->suspended, 0, 1)));
+	rc = wait_event_timeout(this->wq,
+		(0 == atomic_cmpxchg(&this->suspended, 0, 1)),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (rc == 0)
+		dev_info(dev, "%s: timeout occurs\n", __func__);
 	dev_dbg(dev, "%s: i2c no longer suspended\n", __func__);
 	for (i = 0; i < len; i++) {
 		rc = i2c_smbus_write_byte_data(to_i2c_client(dev),
@@ -235,7 +245,7 @@ static int clearpad_i2c_suspend(struct device *dev)
 	struct clearpad_i2c *this = dev_get_drvdata(dev);
 	dev_dbg(dev, "%s: suspend\n", __func__);
 	wait_event(this->wq, atomic_cmpxchg(&this->suspended, 0, 1));
-	dev_vdbg(dev, "%s: i2c suspended\n", __func__);
+	dev_dbg(dev, "%s: i2c suspended\n", __func__);
 	return 0;
 }
 
@@ -245,7 +255,7 @@ static int clearpad_i2c_resume(struct device *dev)
 	dev_dbg(dev, "%s: resume\n", __func__);
 	atomic_set(&this->suspended, 0);
 	wake_up(&this->wq);
-	dev_vdbg(dev, "%s: i2c resumed\n", __func__);
+	dev_dbg(dev, "%s: i2c resumed\n", __func__);
 	return 0;
 }
 

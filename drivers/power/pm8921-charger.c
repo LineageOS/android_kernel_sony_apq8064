@@ -1,5 +1,5 @@
 /* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
- * Copyright (C) 2012-2013 Sony Mobile Communications AB.
+ * Copyright (C) 2012-2013, Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -339,6 +339,7 @@ struct pm8921_chg_chip {
 	unsigned int			safe_current_ma;
 	int				cool_temp_dc;
 	int				warm_temp_dc;
+	int				ibatmax_max_adj_ma;
 	int				hysteresis_temp_dc;
 	unsigned int			temp_check_period;
 	unsigned int			cool_bat_chg_current;
@@ -362,6 +363,7 @@ struct pm8921_chg_chip {
 	enum power_supply_type		usb_type;
 	struct dentry			*dent;
 	struct bms_notify		bms_notify;
+	struct timespec			t;
 	struct input_dev		*chg_unplug_key;
 	bool				ext_charging;
 	bool				ext_charge_done;
@@ -390,6 +392,9 @@ struct pm8921_chg_chip {
 	struct wake_lock		low_voltage_wake_lock;
 	enum pm8921_chg_cold_thr	cold_thr;
 	enum pm8921_chg_hot_thr		hot_thr;
+	bool				ibat_calib_enable;
+	int				cc_uah;
+	int				last_cc_uah; /* used for Iavg calc */
 	int				rconn_mohm;
 	enum pm8921_chg_led_src_config	led_src_config;
 	bool				host_mode;
@@ -411,6 +416,8 @@ struct pm8921_chg_chip {
 
 /* user space parameter to limit usb current */
 static unsigned int usb_max_current;
+static int ibat_target_ma;
+
 /*
  * usb_target_ma is used for wall charger
  * adaptive input current limiting only. Use
@@ -833,11 +840,27 @@ static int pm_chg_uvd_threshold_set(struct pm8921_chg_chip *chip, int thresh_mv)
 }
 
 #define PM8921_CHG_IBATMAX_MIN	325
-#define PM8921_CHG_IBATMAX_MAX	2000
+#define PM8921_CHG_IBATMAX_MAX	3025
 #define PM8921_CHG_I_MIN_MA	225
 #define PM8921_CHG_I_STEP_MA	50
 #define PM8921_CHG_I_MASK	0x3F
-static int pm_chg_ibatmax_set(struct pm8921_chg_chip *chip, int chg_current)
+static int pm_chg_ibatmax_get(struct pm8921_chg_chip *chip, int *ibat_ma)
+{
+	u8 temp;
+	int rc;
+
+	rc = pm8xxx_readb(chip->dev->parent, CHG_IBAT_MAX, &temp);
+	if (rc) {
+		pr_err("rc = %d while reading ibat max\n", rc);
+		*ibat_ma = 0;
+		return rc;
+	}
+	*ibat_ma = (int)(temp & PM8921_CHG_I_MASK) * PM8921_CHG_I_STEP_MA
+							+ PM8921_CHG_I_MIN_MA;
+	return 0;
+}
+
+static int __pm_chg_ibatmax_set(struct pm8921_chg_chip *chip, int chg_current)
 {
 	u8 temp;
 
@@ -846,8 +869,20 @@ static int pm_chg_ibatmax_set(struct pm8921_chg_chip *chip, int chg_current)
 		pr_err("bad mA=%d asked to set\n", chg_current);
 		return -EINVAL;
 	}
+	pr_debug("setting ibatmax=%d\n", chg_current);
+
 	temp = (chg_current - PM8921_CHG_I_MIN_MA) / PM8921_CHG_I_STEP_MA;
 	return pm_chg_masked_write(chip, CHG_IBAT_MAX, PM8921_CHG_I_MASK, temp);
+}
+
+static int find_ibat_max_adj_ma(int ibat_target_ma);
+static int pm_chg_ibatmax_set(struct pm8921_chg_chip *chip, int chg_current)
+{
+	ibat_target_ma = chg_current;
+	chip->ibatmax_max_adj_ma = find_ibat_max_adj_ma(ibat_target_ma);
+	pr_debug("setting ibatmax_adj=%d ibat_target=%d\n",
+			chip->ibatmax_max_adj_ma, ibat_target_ma);
+	return __pm_chg_ibatmax_set(chip, ibat_target_ma);
 }
 
 #define PM8921_CHG_IBATSAFE_MIN	225
@@ -902,6 +937,18 @@ static int pm_chg_iterm_get(struct pm8921_chg_chip *chip, int *chg_current)
 					+ PM8921_CHG_ITERM_MIN_MA;
 	return 0;
 }
+
+struct ibatmax_max_adj_entry {
+	int ibat_max_ma;
+	int max_adj_ma;
+};
+
+static struct ibatmax_max_adj_entry ibatmax_adj_table[] = {
+	{975, 300},
+	{1475, 150},
+	{1975, 200},
+	{2475, 250},
+};
 
 struct usb_ma_limit_entry {
 	int	usb_ma;
@@ -2808,19 +2855,6 @@ static void vin_collapse_check_worker(struct work_struct *work)
 	}
 }
 
-static void
-notify_input_chg_plug_unplug(struct pm8921_chg_chip *chip, int value)
-{
-	int plug;
-
-	if (!chip || !chip->chg_unplug_key)
-		return;
-
-	plug = value ? 1 : 0;
-	input_report_key(chip->chg_unplug_key, KEY_F24, plug);
-	input_sync(chip->chg_unplug_key);
-}
-
 #define VIN_MIN_COLLAPSE_CHECK_MS	50
 static irqreturn_t usbin_valid_irq_handler(int irq, void *data)
 {
@@ -2833,10 +2867,12 @@ static irqreturn_t usbin_valid_irq_handler(int irq, void *data)
 	else
 	    handle_usb_insertion_removal(data);
 
-	if (!is_usb_chg_plugged_in(chip))
-		notify_input_chg_plug_unplug(chip, 0);
-	else
-		notify_input_chg_plug_unplug(chip, 1);
+	if (!is_usb_chg_plugged_in(chip)) {
+		if (chip->chg_unplug_key) {
+			input_report_key(chip->chg_unplug_key, KEY_F24, 1);
+			input_sync(chip->chg_unplug_key);
+		}
+	}
 
 	return IRQ_HANDLED;
 }
@@ -3016,6 +3052,138 @@ static void attempt_reverse_boost_fix(struct pm8921_chg_chip *chip)
 	pr_debug("End\n");
 }
 
+static void calculate_iavg_ua(struct pm8921_chg_chip *chip, int cc_uah,
+					int *iavg_ua, int *delta_time_us)
+{
+	int delta_cc_uah;
+	struct timespec now;
+
+	delta_cc_uah = cc_uah - chip->last_cc_uah;
+	/* since a wake lock is held while charging it is safe to
+	 * use clock_monotonic to obtain the time difference */
+	do_posix_clock_monotonic_gettime(&now);
+
+	if (chip->t.tv_sec != 0)
+		*delta_time_us = (now.tv_sec - chip->t.tv_sec) * USEC_PER_SEC
+			+ (now.tv_nsec - chip->t.tv_nsec) / 1000;
+	else
+		*delta_time_us = 0;
+
+	if (*delta_time_us != 0)
+		*iavg_ua = div_s64((s64) delta_cc_uah * 3600 * 1000000,
+				*delta_time_us);
+	else
+		*iavg_ua = 0;
+
+	pr_debug("t.tv_sec = %d, now.tv_sec = %d delta_us = %d iavg_ua = %d\n",
+		(int)chip->t.tv_sec, (int)now.tv_sec,
+			*delta_time_us, (int)*iavg_ua);
+	chip->t = now;
+	chip->last_cc_uah = cc_uah;
+}
+
+#define IBAT_ACTIVE_MASK 0x64
+#define IBAT_MEAS_DELTA_UA 100000
+static int ibat_calib_offset_ua = 30000;
+module_param(ibat_calib_offset_ua, int, 0644);
+static void pm_chg_ibat_calibrate(struct pm8921_chg_chip *chip)
+{
+	u8 reg_loop, fast_chg;
+	int rc = 0, cc_ua = 0, ibat_max_ua = 0, delta_time_us = 0;
+	int iavg_ua = 0, ibat_inst_ua = 0;
+	int ibat_upper_limit, ibat_lower_limit;
+
+	fast_chg = pm_chg_get_rt_status(chip, FASTCHG_IRQ);
+	if (!fast_chg) {
+		pr_err("not fast charging\n");
+		return;
+	}
+
+	reg_loop = pm_chg_get_regulation_loop(chip);
+	if (reg_loop & IBAT_ACTIVE_MASK) {
+		rc = pm8921_bms_cc_uah(&cc_ua);
+		if (rc) {
+			pr_err("Failed to get cc current rc=%d\n", rc);
+			return;
+		}
+
+		reg_loop = pm_chg_get_regulation_loop(chip);
+		if (!(reg_loop & IBAT_ACTIVE_MASK)) {
+			pr_debug("IBAT not active, returning\n");
+			return;
+		}
+
+		calculate_iavg_ua(chip, cc_ua, &iavg_ua, &delta_time_us);
+		if (iavg_ua == 0) {
+			pr_debug("iavg_ua is zero skipping...\n");
+			return;
+		} else {
+			iavg_ua *= -1;
+		}
+
+		ibat_inst_ua = get_prop_batt_current(chip);
+		ibat_inst_ua *= -1;
+		if (abs(ibat_inst_ua) - abs(iavg_ua) > IBAT_MEAS_DELTA_UA) {
+			pr_debug("too much discrepancy ibat_ua %d iavg_ua %d\n",
+					ibat_inst_ua, iavg_ua);
+			chip->t.tv_sec = 0;
+			chip->last_cc_uah = 0;
+			return;
+		}
+		rc = pm_chg_ibatmax_get(chip, &ibat_max_ua);
+		if (rc) {
+			pr_err("Failed to get ibatmax rc=%d\n", rc);
+			return;
+		}
+		/* convert to uA */
+		ibat_max_ua *= 1000;
+
+		if (iavg_ua < ((ibat_target_ma * 1000) - ibat_calib_offset_ua))
+			ibat_max_ua += 50000;
+		else if (iavg_ua >= ((ibat_target_ma * 1000)
+					+ ibat_calib_offset_ua))
+			ibat_max_ua -= 50000;
+
+		/* limit ibat_upper_limit to max_bat_chg_current */
+		if (ibat_target_ma + chip->ibatmax_max_adj_ma >=
+			chip->max_bat_chg_current)
+			ibat_upper_limit = chip->max_bat_chg_current;
+		else
+			ibat_upper_limit =
+				ibat_target_ma + chip->ibatmax_max_adj_ma;
+
+		/* limit ibat_lower_limit to CHG_IBATMAX_MIN */
+		if (ibat_target_ma - chip->ibatmax_max_adj_ma <=
+			PM8921_CHG_IBATMAX_MIN)
+			ibat_lower_limit = PM8921_CHG_IBATMAX_MIN;
+		else
+			ibat_lower_limit =
+				ibat_target_ma - chip->ibatmax_max_adj_ma;
+
+		pr_debug("target %d iavg %d imax: %d max_cur %d max_adj %d "
+			"uplim %d lolim %d\n",
+				ibat_target_ma, iavg_ua, ibat_max_ua,
+				chip->max_bat_chg_current,
+				chip->ibatmax_max_adj_ma,
+				ibat_upper_limit, ibat_lower_limit);
+
+		if ((ibat_max_ua <= ibat_upper_limit * 1000) &&
+		    (ibat_max_ua >= ibat_lower_limit * 1000)) {
+			rc = __pm_chg_ibatmax_set(chip, ibat_max_ua / 1000);
+			if (rc) {
+				pr_err("Failed to set ibatmax rc=%d\n", rc);
+				return;
+			}
+		} else {
+			pr_debug("ibatmax is within spec - not adjusting\n");
+		}
+	} else {
+		chip->t.tv_sec = 0;
+		chip->last_cc_uah = 0;
+	}
+	return;
+}
+
 #define VIN_ACTIVE_BIT BIT(0)
 #define UNPLUG_WRKARND_RESTORE_WAIT_PERIOD_US	200
 #define VIN_MIN_INCREASE_MV	100
@@ -3067,11 +3235,8 @@ static void unplug_check_worker(struct work_struct *work)
 				get_prop_batt_current(chip)
 				);
 
-			/*
-			 * just in case, if notification is not
-			 * done in the interrupt
-			 */
-			notify_input_chg_plug_unplug(chip, 0);
+			input_report_key(chip->chg_unplug_key, KEY_F24, 1);
+			input_sync(chip->chg_unplug_key);
 			return;
 		} else {
 			goto check_again_later;
@@ -3137,6 +3302,10 @@ static void unplug_check_worker(struct work_struct *work)
 			usb_target_ma = usb_ma;
 		}
 	}
+
+	if (chip->ibat_calib_enable)
+		pm_chg_ibat_calibrate(chip);
+
 check_again_later:
 	/* schedule to check again later */
 	schedule_delayed_work(&chip->unplug_check_work,
@@ -3153,6 +3322,21 @@ static irqreturn_t loop_change_irq_handler(int irq, void *data)
 		pm_chg_get_regulation_loop(data));
 	schedule_work(&chip->unplug_check_work.work);
 	return IRQ_HANDLED;
+}
+
+static int find_ibat_max_adj_ma(int ibat_target_ma)
+{
+	int i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(ibatmax_adj_table); i++) {
+		if (ibat_target_ma <= ibatmax_adj_table[i].ibat_max_ma)
+			break;
+	}
+
+	if (i >= ARRAY_SIZE(ibatmax_adj_table))
+		return 0;
+
+	return ibatmax_adj_table[i].max_adj_ma;
 }
 
 static irqreturn_t fastchg_irq_handler(int irq, void *data)
@@ -3372,12 +3556,6 @@ static irqreturn_t dcin_valid_irq_handler(int irq, void *data)
 		power_supply_changed(&chip->dc_psy);
 	}
 	power_supply_changed(&chip->batt_psy);
-
-	if (dc_present)
-		notify_input_chg_plug_unplug(chip, 1);
-	else
-		notify_input_chg_plug_unplug(chip, 0);
-
 	return IRQ_HANDLED;
 }
 
@@ -4482,6 +4660,9 @@ static int __devinit pm8921_chg_hw_init(struct pm8921_chg_chip *chip)
 		return rc;
 	}
 
+	chip->ibatmax_max_adj_ma = find_ibat_max_adj_ma(
+				chip->max_bat_chg_current);
+
 	rc = pm_chg_iterm_set(chip, chip->term_current);
 	if (rc) {
 		pr_err("Failed to set term current to %d rc=%d\n",
@@ -5099,6 +5280,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->batt_id_channel = pdata->charger_cdata.batt_id_channel;
 	chip->batt_id_min = pdata->batt_id_min;
 	chip->batt_id_max = pdata->batt_id_max;
+	chip->ibat_calib_enable = pdata->ibat_calib_enable;
 	if (pdata->cool_temp != INT_MIN)
 		chip->cool_temp_dc = pdata->cool_temp * 10;
 	else
