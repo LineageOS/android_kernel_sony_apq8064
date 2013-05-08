@@ -2143,8 +2143,8 @@ void hdmi_common_init_panel_info(struct msm_panel_info *pinfo)
 
 	/* blk */
 	pinfo->lcdc.border_clr = 0;
-	/* blue */
-	pinfo->lcdc.underflow_clr = 0xff;
+	/* black */
+	pinfo->lcdc.underflow_clr = 0x0;
 	pinfo->lcdc.hsync_skew = 0;
 }
 EXPORT_SYMBOL(hdmi_common_init_panel_info);

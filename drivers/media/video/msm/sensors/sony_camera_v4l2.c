@@ -505,10 +505,18 @@ static int sony_eeprom_load(struct msm_sensor_ctrl_t *s_ctrl)
 	} else {
 		LOGE("Module name not recognized. Force name.\n");
 
-		if (id == 0)
-			camera_data[id].module = &camera_info[id].modules[4];
-		else
-			camera_data[id].module = &camera_info[id].modules[2];
+		camera_data[id].module = &camera_info[id].modules[0];
+
+		for (i = 1; i < camera_info[id].modules_num; i++) {
+			if (!strncmp(camera_info[id].modules[i].name,
+				camera_info[id].default_module_name,
+				SENSOR_NAME_LEN)) {
+				camera_data[id].module
+					= &camera_info[id].modules[i];
+				LOGD("detected sensor Force name\n");
+				break;
+			}
+		}
 
 		memcpy(d, camera_info[id].default_module_name, SENSOR_NAME_LEN);
 		camera_data[id].s_ctrl.sensor_i2c_addr =

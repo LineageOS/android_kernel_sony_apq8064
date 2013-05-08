@@ -113,6 +113,7 @@ struct mipi_dsi_data {
 	struct mutex lock;
 	struct mdp_pcc_cfg_data *pcc_config;
 };
+extern struct mdp_pcc_cfg_data *pcc_cfg_ptr;
 
 void mipi_dsi_panel_fps_data_update(struct msm_fb_data_type *mfd);
 #ifdef CONFIG_DEBUG_FS

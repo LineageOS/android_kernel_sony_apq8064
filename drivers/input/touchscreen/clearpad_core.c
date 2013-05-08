@@ -1,7 +1,7 @@
 /* linux/drivers/input/touchscreen/clearpad_core.c
  *
  * Copyright (C) 2010 Sony Ericsson Mobile Communications AB.
- * Copyright (C) 2012 Sony Mobile Communications AB.
+ * Copyright (C) 2012 - 2013 Sony Mobile Communications AB.
  *
  * Author: Courtney Cavin <courtney.cavin@sonyericsson.com>
  *         Yusuke Yoshimura <Yusuke.Yoshimura@sonyericsson.com>
@@ -50,6 +50,7 @@
 #define SYNAPTICS_MAX_INTERRUPT_SOURCE_COUNT	0x7
 #define SYNAPTICS_STRING_LENGTH			128
 #define SYNAPTICS_RETRY_NUM_OF_INITIAL_CHECK	2
+#define SYNAPTICS_RETRY_NUM_OF_I2C_READ_WRITE	5
 #define SYNAPTICS_FINGER_OFF(n, x) \
 	((((n) / 4) + !!(n % 4)) + SYNAPTICS_FINGER_DATA_SIZE * (x))
 #define SYNAPTICS_REG_MAX \
@@ -406,7 +407,7 @@ struct synaptics_clearpad {
 	struct dentry *debugfs;
 #endif
 	bool pen_enabled;
-	bool ew_triggered;
+	unsigned long ew_timeout;
 	struct delayed_work wd_poll_work;
 	int wd_poll_t_jf;
 };
@@ -428,13 +429,35 @@ static char *make_string(u8 *array, size_t size)
 
 static int regs_read(struct synaptics_clearpad *this, u8 reg, u8 *buf, int len)
 {
-	return this->bdata->read(this->pdev->dev.parent, reg, buf, len);
+	int rc;
+	int i;
+
+	for (i = 0; i < SYNAPTICS_RETRY_NUM_OF_I2C_READ_WRITE; i++) {
+		rc = this->bdata->read(this->pdev->dev.parent, reg, buf, len);
+		if (rc == 0)
+			break;
+		usleep_range(10000, 11000);
+		dev_err(&this->pdev->dev,
+			"read fail: retry = %d, rc = %d\n", i, rc);
+	}
+	return rc;
 }
 
 static int regs_write(struct synaptics_clearpad *this, u8 reg, const u8 *buf,
 		u8 len)
 {
-	return this->bdata->write(this->pdev->dev.parent, reg, buf, len);
+	int rc;
+	int i;
+
+	for (i = 0; i < SYNAPTICS_RETRY_NUM_OF_I2C_READ_WRITE; i++) {
+		rc = this->bdata->write(this->pdev->dev.parent, reg, buf, len);
+		if (rc == 0)
+			break;
+		usleep_range(10000, 11000);
+		dev_err(&this->pdev->dev,
+			"write fail: retry = %d, rc = %d\n", i, rc);
+	}
+	return rc;
 }
 
 static inline int synaptics_clearpad_page_sel(struct synaptics_clearpad *this,
@@ -1302,7 +1325,13 @@ static int synaptics_clearpad_set_power(struct synaptics_clearpad *this)
 
 		synaptics_clearpad_set_irq(this,
 				this->pdt[SYN_F01_RMI].irq_mask, true);
-		synaptics_read(this, SYNF(F01_RMI, DATA, 0x01), &irq, 1);
+		rc = synaptics_read(this, SYNF(F01_RMI, DATA, 0x01), &irq, 1);
+		if (rc) {
+			dev_err(&this->pdev->dev,
+					"%s, rc = %d, Resetting device\n",
+					__func__, rc);
+			synaptics_clearpad_reset_power(this);
+		}
 
 		if (this->pdt[SYN_F11_2D].number
 				== function_value[SYN_F11_2D]) {
@@ -1336,14 +1365,18 @@ static int synaptics_clearpad_set_power(struct synaptics_clearpad *this)
 			if (rc)
 				goto err_unlock;
 
-			this->ew_triggered = false;
+			this->ew_timeout = jiffies - 1;
 			usleep_range(10000, 11000);
 			LOG_CHECK(this, "enter doze mode\n");
+#ifdef CONFIG_HAS_EARLYSUSPEND
 			synaptics_clearpad_set_irq(this,
 					this->pdt[SYN_F01_RMI].irq_mask, true);
 			synaptics_read(this, SYNF(F01_RMI, DATA, 0x01),
 					&irq, 1);
-
+#else
+			synaptics_clearpad_set_irq(this,
+					this->pdt[SYN_F01_RMI].irq_mask, false);
+#endif
 		} else {
 			rc = synaptics_put_bit(this, SYNF(F01_RMI, CTRL, 0x00),
 				DEVICE_CONTROL_SLEEP_MODE_SENSOR_SLEEP,
@@ -1656,6 +1689,24 @@ synaptics_funcarea_report_extra_events(struct synaptics_clearpad *this)
 	}
 }
 
+static void synaptics_funcarea_invalidate_all(struct synaptics_clearpad *this)
+{
+	struct synaptics_pointer *pointer;
+	int i;
+
+	for (i = 0; i < this->extents.n_fingers; ++i) {
+		pointer = &this->pointer[i];
+		if (pointer->down) {
+			pointer->down = false;
+			LOG_VERBOSE(this, "invalidate pointer %d\n", i);
+		}
+		if (pointer->funcarea)
+			synaptics_funcarea_up(this, pointer);
+	}
+	synaptics_funcarea_report_extra_events(this);
+	input_sync(this->input);
+}
+
 static void synaptics_report_finger_n(struct synaptics_clearpad *this,
 				      int finger)
 {
@@ -1781,10 +1832,12 @@ static int synaptics_clearpad_handle_gesture(struct synaptics_clearpad *this)
 
 	dev_info(&this->pdev->dev, "Gesture %d", wakeint);
 
-	if (this->ew_triggered)
+	if (time_after(jiffies, this->ew_timeout))
+		this->ew_timeout = jiffies + msecs_to_jiffies(
+			this->easy_wakeup_config.timeout_delay);
+	else
 		goto exit;
 
-	this->ew_triggered = true;
 	switch (wakeint) {
 	case XY_LPWG_STATUS_DOUBLE_TAP_DETECTED:
 		rc = evgen_execute(this->input, this->evgen_blocks,
@@ -1887,12 +1940,10 @@ static irqreturn_t synaptics_clearpad_threaded_handler(int irq, void *dev_id)
 	if (interrupt & this->pdt[SYN_F11_2D].irq_mask) {
 		if (this->easy_wakeup_config.gesture_enable
 		    && !(this->active & SYN_ACTIVE_POWER)) {
-			if (synaptics_clearpad_handle_gesture(this) == 0) {
+			if (synaptics_clearpad_handle_gesture(this) == 0)
 				goto unlock; /* gesture handled */
-			} else {
-				this->ew_triggered = false;
+			else
 				goto err_bus;
-			}
 		}
 
 		rc = synaptics_read(this, SYNF(F01_RMI, DATA, 0x00),
@@ -2520,10 +2571,6 @@ static int synaptics_clearpad_pm_suspend(struct device *dev)
 	LOG_STAT(this, "active: %x (task: %s)\n",
 		 this->active, task_name[this->task]);
 
-	if (device_may_wakeup(dev)) {
-		enable_irq_wake(this->pdata->irq);
-		dev_info(&this->pdev->dev, "enable irq wake");
-	}
 	UNLOCK(this);
 
 	rc = synaptics_clearpad_set_power(this);
@@ -2544,14 +2591,54 @@ static int synaptics_clearpad_pm_resume(struct device *dev)
 	LOG_STAT(this, "active: %x (task: %s)\n",
 		 this->active, task_name[this->task]);
 
+	synaptics_funcarea_invalidate_all(this);
+	UNLOCK(this);
+
+	rc = synaptics_clearpad_set_power(this);
+	return rc;
+}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static int synaptics_clearpad_pm_suspend_with_earlysuspend(struct device *dev)
+{
+	struct synaptics_clearpad *this = dev_get_drvdata(dev);
+	LOCK(this);
+	dev_dbg(&this->pdev->dev, "suspend");
+	synaptics_clearpad_set_irq(this,
+		this->pdt[SYN_F01_RMI].irq_mask, false);
+	dev_info(&this->pdev->dev, "disable irq");
+	UNLOCK(this);
+	return 0;
+}
+#endif
+
+static int synaptics_clearpad_pm_suspend_noirq(struct device *dev)
+{
+	struct synaptics_clearpad *this = dev_get_drvdata(dev);
+	LOCK(this);
+	dev_dbg(&this->pdev->dev, "suspend noirq");
+	if (device_may_wakeup(dev)) {
+		synaptics_clearpad_set_irq(this,
+			this->pdt[SYN_F01_RMI].irq_mask, true);
+		dev_info(&this->pdev->dev, "enable irq");
+		enable_irq_wake(this->pdata->irq);
+		dev_info(&this->pdev->dev, "enable irq wake");
+	}
+	UNLOCK(this);
+	return 0;
+}
+
+static int synaptics_clearpad_pm_resume_noirq(struct device *dev)
+{
+	struct synaptics_clearpad *this = dev_get_drvdata(dev);
+	LOCK(this);
+	dev_dbg(&this->pdev->dev, "resume noirq");
 	if (device_may_wakeup(dev)) {
 		disable_irq_wake(this->pdata->irq);
 		dev_info(&this->pdev->dev, "disable irq wake");
 	}
 	UNLOCK(this);
-
-	rc = synaptics_clearpad_set_power(this);
-	return rc;
+	return 0;
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -3293,7 +3380,11 @@ static const struct dev_pm_ops synaptics_clearpad_pm = {
 #ifndef CONFIG_HAS_EARLYSUSPEND
 	.suspend = synaptics_clearpad_pm_suspend,
 	.resume = synaptics_clearpad_pm_resume,
+#else
+	.suspend = synaptics_clearpad_pm_suspend_with_earlysuspend,
 #endif
+	.suspend_noirq = synaptics_clearpad_pm_suspend_noirq,
+	.resume_noirq = synaptics_clearpad_pm_resume_noirq,
 };
 
 static struct platform_driver clearpad_driver = {
