@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iDDplRs",
+        "filename": "drivers/gpu/msm/kgsl_pwrscale_conservative.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 4855
+      },
+      "writtenOn": "2013-05-29T21:25:42Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be:\nstatic void conservative_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale, unsigned int ignore_idle)\n\nOtherwise I get:\ndrivers/gpu/msm/kgsl_pwrscale_conservative.c:232:5: warning: initialization from incompatible pointer type [enabled by default]",
+      "revId": "78881d5fc5e3e68fa575ecf119cda6c22e9b7711",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
