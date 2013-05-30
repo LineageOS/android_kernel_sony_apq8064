@@ -52,6 +52,24 @@
       "revId": "78881d5fc5e3e68fa575ecf119cda6c22e9b7711",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iBDB8eQ",
+        "filename": "drivers/gpu/msm/kgsl_pwrscale_conservative.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 4855
+      },
+      "writtenOn": "2013-05-30T12:59:48Z",
+      "side": 1,
+      "message": "It didn\u0027t work without the sysfs rework patch. Merged it after kernel panic :)",
+      "parentUuid": "iDDQdVM",
+      "revId": "78881d5fc5e3e68fa575ecf119cda6c22e9b7711",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
