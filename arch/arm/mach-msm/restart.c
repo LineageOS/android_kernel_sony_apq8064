@@ -58,6 +58,7 @@ static int ssr_magic_number = 0;
 #endif
 
 static int restart_mode;
+static char* bootloader;
 void *restart_reason;
 
 int pmic_reset_irq;
@@ -85,6 +86,13 @@ static void set_dload_mode(int on)
 		mb();
 	}
 }
+
+static int __init get_bootloader(char *str)
+{
+	bootloader = str;
+	return 1;
+}
+__setup("androidboot.bootloader=", get_bootloader);
 
 static int dload_set(const char *val, struct kernel_param *kp)
 {
@@ -286,12 +294,20 @@ void msm_restart(char mode, const char *cmd)
 	pm8xxx_reset_pwr_off(1);
 
 	if (cmd != NULL) {
+		if (!strncmp(bootloader, "lk", 2)) {
+			if (!strncmp(cmd, "s1fastboot", 10))
+				__raw_writel(0x77665500, restart_reason - 0x1B0);
+		}
 		if (!strncmp(cmd, "bootloader", 10)) {
 			__raw_writel(0x77665500, restart_reason);
 		} else if (!strncmp(cmd, "recovery", 8)) {
 			__raw_writel(0x77665502, restart_reason);
 		} else if (!strncmp(cmd, "s1bootloader", 12)) {
-			__raw_writel(0x6f656d53, restart_reason);
+			if (!strncmp(bootloader, "lk", 2)) {
+				__raw_writel(0x6f656d53, restart_reason - 0x1B0);
+			} else {
+				__raw_writel(0x6f656d53, restart_reason);
+			}
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
@@ -371,7 +387,11 @@ static int __init msm_restart_init(void)
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();
-	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+	if (!strncmp(bootloader, "lk", 2)) {
+		restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR + 0x1B0;
+	} else {
+		restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+	}
 	pm_power_off = msm_power_off;
 
 	return 0;
