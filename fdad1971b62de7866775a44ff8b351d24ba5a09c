@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iF98A3I",
+        "filename": "arch/arm/mach-msm/restart.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 2158
+      },
+      "writtenOn": "2013-06-17T13:53:34Z",
+      "side": 1,
+      "message": "Impossible code!\ncmd can\u0027t both be s1bootloader and lk at the same time ;)",
+      "revId": "fdad1971b62de7866775a44ff8b351d24ba5a09c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
