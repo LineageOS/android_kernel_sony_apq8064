@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_3348885b",
+        "filename": "arch/arm/mach-msm/board-sony_fusion3.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 384,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2013-06-29T09:35:19Z",
+      "side": 1,
+      "message": "Is this intentional?",
+      "revId": "9c595ee8d74dcdcacb58bdd691283249b89b34ff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_1374649a",
+        "filename": "arch/arm/mach-msm/devices-8064.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1516,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2013-06-29T09:35:19Z",
+      "side": 1,
+      "message": "This reverts commit bef749578e06f54f78695c12a2acc9d48d4f630c partially",
+      "revId": "9c595ee8d74dcdcacb58bdd691283249b89b34ff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
