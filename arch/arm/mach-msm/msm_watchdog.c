@@ -23,8 +23,8 @@
 #include <linux/suspend.h>
 #include <linux/percpu.h>
 #include <linux/interrupt.h>
-#include <linux/smp.h>
 #include <linux/reboot.h>
+#include <linux/smp.h>
 #include <asm/fiq.h>
 #include <asm/hardware/gic.h>
 #include <mach/msm_iomap.h>

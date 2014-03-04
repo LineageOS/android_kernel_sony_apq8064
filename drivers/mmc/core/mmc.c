@@ -842,6 +842,7 @@ err:
 	return err;
 }
 
+
 /**
  * mmc_change_bus_speed() - Change MMC card bus frequency at runtime
  * @host: pointer to mmc host structure
@@ -1500,6 +1501,12 @@ static void mmc_detect(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
+	/*
+	 * Disable clock scaling before suspend and enable it after resume so
+	 * as to avoid clock scaling decisions kicking in during this window.
+	 */
+	mmc_disable_clk_scaling(host);
+
 	mmc_claim_host(host);
 
 	/*
@@ -1608,6 +1615,13 @@ static int mmc_resume(struct mmc_host *host)
 	} else
 		err = mmc_init_card(host, host->ocr, host->card);
 	mmc_release_host(host);
+
+	/*
+	 * We have done full initialization of the card,
+	 * reset the clk scale stats and current frequency.
+	 */
+	if (mmc_can_scale_clk(host))
+		mmc_init_clk_scaling(host);
 
 	/*
 	 * We have done full initialization of the card,
@@ -1768,6 +1782,8 @@ int mmc_attach_mmc(struct mmc_host *host)
 	mmc_claim_host(host);
 	if (err)
 		goto remove_card;
+
+	mmc_init_clk_scaling(host);
 
 	mmc_init_clk_scaling(host);
 

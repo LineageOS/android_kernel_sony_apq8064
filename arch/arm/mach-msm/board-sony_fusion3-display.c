@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  * Copyright (C) 2012 Sony Mobile Communications AB.
  *
  * Author: johan.olson@sonymobile.com
@@ -233,9 +233,9 @@ static struct msm_bus_scale_pdata mdp_bus_scale_pdata = {
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = MDP_VSYNC_GPIO,
 	.mdp_max_clk = 266667000,
-	.mdp_max_bw = 4290000000u,
+	.mdp_max_bw = 0x83215600,
 	.mdp_bw_ab_factor = 115,
-	.mdp_bw_ib_factor = 200,
+	.mdp_bw_ib_factor = 205,
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 	.mdp_rev = MDP_REV_44,
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
@@ -255,6 +255,9 @@ void __init apq8064_mdp_writeback(struct memtype_reserve* reserve_table)
 		mdp_pdata.ov0_wb_size;
 	reserve_table[mdp_pdata.mem_hid].size +=
 		mdp_pdata.ov1_wb_size;
+
+	pr_info("mem_map: mdp reserved with size 0x%lx in pool\n",
+			mdp_pdata.ov0_wb_size + mdp_pdata.ov1_wb_size);
 #endif
 }
 
@@ -514,6 +517,10 @@ static const struct panel *panels[] = {
 	&jdc_mdy70_panel_id_1a_02,
 	&jdc_mdy70_panel_id,
 #endif /* CONFIG_FB_MSM_MIPI_R63311_JDC_MDY70 */
+#ifdef CONFIG_FB_MSM_MIPI_R63311_JDC_MDY71
+	&jdc_mdy71_panel_id_1a,
+	&jdc_mdy71_panel_id,
+#endif /* CONFIG_FB_MSM_MIPI_R63311_JDC_MDY71 */
 #ifdef CONFIG_FB_MSM_MIPI_R63311_JDC_MDY80
 	&jdc_mdy80_black_panel_id,
 	&jdc_mdy80_white_panel_id,

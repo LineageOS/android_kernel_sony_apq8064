@@ -56,6 +56,7 @@
 #include "timer.h"
 #include "pm-boot.h"
 #include <mach/event_timer.h>
+#include <linux/cpu_pm.h>
 #include <mach/power_debug.h>
 #include <linux/cpu_pm.h>
 
@@ -543,6 +544,9 @@ static bool __ref msm_pm_spm_power_collapse(
 	if (from_idle == true)
 		cpu_pm_enter();
 
+	if (from_idle == true)
+		cpu_pm_enter();
+
 	ret = msm_spm_set_low_power_mode(
 			MSM_SPM_MODE_POWER_COLLAPSE, notify_rpm);
 	WARN_ON(ret);
@@ -974,13 +978,13 @@ cpuidle_enter_bail:
 
 int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 {
-	int timeout = 0;
+	int timeout = 10;
 
 	if (!msm_pm_slp_sts)
 		return 0;
 	if (!msm_pm_slp_sts[cpu].base_addr)
 		return 0;
-	while (1) {
+	while (timeout--) {
 		/*
 		 * Check for the SPM of the core being hotplugged to set
 		 * its sleep state.The SPM sleep state indicates that the
@@ -991,10 +995,10 @@ int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 		if (acc_sts & msm_pm_slp_sts[cpu].mask)
 			return 0;
 		udelay(100);
-		WARN(++timeout == 10, "CPU%u didn't collape within 1ms\n",
-					cpu);
 	}
 
+	pr_info("%s(): Timed out waiting for CPU %u SPM to enter sleep state",
+		__func__, cpu);
 	return -EBUSY;
 }
 
