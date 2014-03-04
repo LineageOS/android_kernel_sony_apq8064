@@ -1,6 +1,5 @@
 /* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
- * Copyright (C) 2012-2013 Sony Mobile Communications AB.
+ * Copyright (C) 2012 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -413,7 +412,7 @@ static void mdm_restart_reason_fn(struct work_struct *work)
 			} else {
 				pr_err("mdm restart reason: %s\n", sfr_buf);
 #ifdef CONFIG_RAMDUMP_TAGS
-			rdtags_add_tag("ssr_reason", sfr_buf, strnlen(sfr_buf, RD_BUF_SIZE - 1) + 1);
+				rdtags_add_tag("ssr_reason", sfr_buf, strnlen(sfr_buf, RD_BUF_SIZE - 1) + 1);
 #endif
 				break;
 			}
@@ -654,7 +653,6 @@ static void mdm_check_full_dump(void)
 		panic("Reseting the SoC due to MDM-A5 crash");
 	}
 
-	mdm_last_crash_time = jiffies;
 }
 
 static irqreturn_t mdm_errfatal(int irq, void *dev_id)
@@ -674,6 +672,7 @@ static irqreturn_t mdm_errfatal(int irq, void *dev_id)
 		(gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 1)) {
 		pr_info("%s: Received err fatal from mdm id %d\n",
 				__func__, mdev->mdm_data.device_id);
+		mdm_last_crash_time = jiffies;
 		mdm_start_ssr(mdev);
 	}
 	return IRQ_HANDLED;
@@ -1163,6 +1162,11 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 		ret = -ENOMEM;
 		goto fatal_err;
 	}
+	memset((void *)&mdev->ssr_notifier_blk, 0,
+			sizeof(struct notifier_block));
+	mdev->ssr_notifier_blk.notifier_call  = ssr_notifier_cb;
+	subsys_notif_register_notifier(mdev->subsys_name,
+			&mdev->ssr_notifier_blk);
 
 	/* Register subsystem handlers */
 	mdev->mdm_subsys_dev = subsys_register(&mdev->mdm_subsys);

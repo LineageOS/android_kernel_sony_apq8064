@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1397,6 +1398,7 @@ int mdp4_overlay_format2pipe(struct mdp4_overlay_pipe *pipe)
 			pipe->chroma_sample = MDP4_CHROMA_420;
 		}
 		pipe->bpp = 2;	/* 2 bpp */
+		pipe->chroma_sample = MDP4_CHROMA_RGB;
 		break;
 	case MDP_Y_CBCR_H2V2_TILE:
 	case MDP_Y_CRCB_H2V2_TILE:
@@ -1433,6 +1435,7 @@ int mdp4_overlay_format2pipe(struct mdp4_overlay_pipe *pipe)
 		pipe->alpha_enable = 0;
 		pipe->chroma_sample = MDP4_CHROMA_420;
 		pipe->bpp = 2;	/* 2 bpp */
+		pipe->chroma_sample = MDP4_CHROMA_RGB;
 		break;
 	case MDP_YCBCR_H1V1:
 	case MDP_YCRCB_H1V1:
@@ -3122,6 +3125,10 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	u64 ab_quota_port0 = 0, ib_quota_port0 = 0;
 	u64 ab_quota_port1 = 0, ib_quota_port1 = 0;
 	u64 ib_quota_min = 0;
+	u32 fps;
+	u32 quota;
+	static u64 ib_quota_total_min;
+	u32 shift = 16;
 
 	if (!mfd) {
 		pr_err("%s: mfd is null!\n", __func__);
@@ -3222,6 +3229,22 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 
 	perf_req->mdp_ab_bw = roundup(ab_quota_total, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_bw = roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
+
+	if (!ib_quota_total_min) {
+		fps = mdp_get_panel_framerate(mfd);
+		quota = (mfd->panel_info.xres *
+				mfd->panel_info.yres * fps * 4);
+		quota >>= shift;
+		ib_quota_total_min = quota * mdp_bw_ib_factor / 100;
+		ib_quota_total_min <<= shift;
+		ib_quota_total_min =
+			roundup(ib_quota_total_min, MDP_BUS_SCALE_AB_STEP);
+	}
+
+	if (pipe->mixer_num == MDP4_MIXER0) {
+		if (ib_quota_total_min > perf_req->mdp_ib_bw)
+			perf_req->mdp_ib_bw = ib_quota_total_min;
+	}
 
 	perf_req->mdp_ab_port0_bw =
 		roundup(ab_quota_port0, MDP_BUS_SCALE_AB_STEP);

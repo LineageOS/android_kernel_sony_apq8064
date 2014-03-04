@@ -2274,6 +2274,8 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 	return 0;
 }
 
+
+
 void msm_fb_release_busy(struct msm_fb_data_type *mfd)
 {
 	mutex_lock(&mfd->sync_mutex);
