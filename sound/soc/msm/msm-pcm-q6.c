@@ -720,10 +720,22 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 						  substream->stream, event);
 	}
 
-	ret = q6asm_audio_client_buf_alloc_contiguous(dir,
+	if (dir == OUT) {
+		ret = q6asm_audio_client_buf_alloc_contiguous(dir,
 			prtd->audio_client,
 			(params_buffer_bytes(params) / params_periods(params)),
-			params_periods(params));
+				params_periods(params));
+		pr_debug("buff bytes = %d, period size = %d,\
+			period count = %d\n", params_buffer_bytes(params),
+			params_periods(params),
+			params_buffer_bytes(params) / params_periods(params));
+	} else {
+		ret = q6asm_audio_client_buf_alloc_contiguous(dir,
+			prtd->audio_client,
+			runtime->hw.period_bytes_min,
+			runtime->hw.periods_max);
+	}
+
 	if (ret < 0) {
 		pr_err("Audio Start: Buffer Allocation failed \
 					rc = %d\n", ret);
@@ -740,7 +752,10 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	dma_buf->area = buf[0].data;
 	dma_buf->addr =  buf[0].phys;
 	dma_buf->bytes = runtime->hw.buffer_bytes_max;
-	dma_buf->bytes = params_buffer_bytes(params);
+	if (dir == IN)
+		dma_buf->bytes = runtime->hw.buffer_bytes_max;
+	else
+		dma_buf->bytes = params_buffer_bytes(params);
 
 	if (!dma_buf->area)
 		return -ENOMEM;
