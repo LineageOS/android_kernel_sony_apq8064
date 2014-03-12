@@ -101,9 +101,13 @@ void hang_timer(unsigned long data)
 {
 	struct kgsl_device *device = (struct kgsl_device *) data;
 
-	if (device->state == KGSL_STATE_ACTIVE) {
-		/* Have work run in a non-interrupt context. */
-		queue_work(device->work_queue, &device->hang_check_ws);
+	/* check Hang only for 3d device */
+	if (device->id == KGSL_DEVICE_3D0) {
+		if (device->state == KGSL_STATE_ACTIVE) {
+
+			/* Have work run in a non-interrupt context. */
+			queue_work(device->work_queue, &device->hang_check_ws);
+		}
 	}
 }
 
@@ -2945,7 +2949,7 @@ err_put:
 static inline bool
 mmap_range_valid(unsigned long addr, unsigned long len)
 {
-	return (addr + len) > addr && (addr + len) < TASK_SIZE;
+	return ((ULONG_MAX - addr) > len) && ((addr + len) < TASK_SIZE);
 }
 
 static unsigned long

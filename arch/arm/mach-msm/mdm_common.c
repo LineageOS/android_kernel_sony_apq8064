@@ -654,7 +654,6 @@ static void mdm_check_full_dump(void)
 		panic("Reseting the SoC due to MDM-A5 crash");
 	}
 
-	mdm_last_crash_time = jiffies;
 }
 
 static irqreturn_t mdm_errfatal(int irq, void *dev_id)
@@ -674,6 +673,7 @@ static irqreturn_t mdm_errfatal(int irq, void *dev_id)
 		(gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 1)) {
 		pr_info("%s: Received err fatal from mdm id %d\n",
 				__func__, mdev->mdm_data.device_id);
+		mdm_last_crash_time = jiffies;
 		mdm_start_ssr(mdev);
 	}
 	return IRQ_HANDLED;

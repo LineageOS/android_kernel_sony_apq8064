@@ -355,7 +355,6 @@ void mdp4_dtv_wait4vsync(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
-	ktime_t timestamp;
 	int ret;
 
 	if (cndx >= MAX_CONTROLLER) {
@@ -370,11 +369,6 @@ void mdp4_dtv_wait4vsync(int cndx)
 		return;
 
 	mdp4_dtv_vsync_irq_ctrl(cndx, 1);
-	timestamp = vctrl->vsync_time;
-	wait_event_interruptible_timeout(vctrl->wait_queue,
-			!ktime_equal(timestamp, vctrl->vsync_time) &&
-			vctrl->vsync_irq_enabled,
-			msecs_to_jiffies(VSYNC_PERIOD * 8));
 
 	ret = wait_event_interruptible_timeout(vctrl->wait_queue, 1,
 			msecs_to_jiffies(VSYNC_PERIOD * 8));

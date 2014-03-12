@@ -83,3 +83,7 @@ obj-$(CONFIG_LM3560)		+= lm3560.o
 obj-$(CONFIG_LM3561)		+= lm3561.o
 obj-$(CONFIG_SENSORS_MPU6050) += mpu6050/
 obj-$(CONFIG_SENSORS_MPU3050) += mpu3050/
+obj-$(CONFIG_SOMC_ISDBT_TUNER) += isdbt_tuner_drv.o
+obj-$(CONFIG_SONY_FELICA_SUPPORT) += felica.o
+obj-$(CONFIG_SONY_FELICA_NFC_SUPPORT) += felica_vdev.o
+obj-$(CONFIG_SONY_ONESEG_TUNER_PM) += oneseg_tunerpm.o

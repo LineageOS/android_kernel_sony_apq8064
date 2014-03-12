@@ -485,7 +485,4 @@ static inline int msm_ep_unconfig(struct usb_ep *ep)
 	return -ENODEV;
 }
 #endif
-
-void msm_otg_notify_vbus_drop(void);
-
 #endif

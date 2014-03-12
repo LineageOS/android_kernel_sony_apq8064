@@ -265,7 +265,7 @@ static int snd_usb_create_streams(struct snd_usb_audio *chip, int ctrlif)
 		break;
 	}
 	}
-	switch_set_state(usbaudiosdev, 1);
+
 	return 0;
 }
 
@@ -421,6 +421,7 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 	}
 
 	snd_usb_audio_create_proc(chip);
+	switch_set_state(usbaudiosdev, 1);
 
 	*rchip = chip;
 	return 0;
@@ -722,7 +723,7 @@ static int __init snd_usb_audio_init(void)
 		return -EINVAL;
 	}
 
-	usbaudiosdev = kzalloc(sizeof(*usbaudiosdev), GFP_KERNEL);
+	usbaudiosdev = kzalloc(sizeof(usbaudiosdev), GFP_KERNEL);
 	usbaudiosdev->name = "usb_audio";
 
 	err = switch_dev_register(usbaudiosdev);
