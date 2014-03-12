@@ -918,7 +918,7 @@ config MACH_MPQ8064_DTV
 
 config MACH_SONY_FUSION3
 	depends on ARCH_APQ8064
-	bool "Sony Mobile CDB"
+	bool "Sony Mobile"
 	help
 	  Support for the Sony Mobile Fusion3 devices.
 
@@ -2288,6 +2288,12 @@ config MSM_RUN_QUEUE_STATS
 config MSM_STANDALONE_POWER_COLLAPSE
        bool "Enable standalone power collapse"
        default n
+
+config MSM_GSBI7_UART
+	bool "Enable GSBI7 UART device"
+	default n
+	help
+	  This enables GSBI7 configured into UART.
 
 config MSM_GSBI9_UART
 	bool "Enable GSBI9 UART device"

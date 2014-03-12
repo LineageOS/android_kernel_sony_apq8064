@@ -1220,7 +1220,10 @@ void l2cap_conn_del(struct hci_conn *hcon, int err, u8 is_process)
 			else
 				bh_lock_sock(sk);
 			l2cap_chan_del(sk, err);
-			bh_unlock_sock(sk);
+			if (is_process)
+				release_sock(sk);
+			else
+				bh_unlock_sock(sk);
 			l2cap_sock_kill(sk);
 			sk = next;
 		} else
