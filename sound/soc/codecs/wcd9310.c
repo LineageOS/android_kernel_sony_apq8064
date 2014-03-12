@@ -7547,7 +7547,7 @@ static void tabla_hs_insert_irq_extn(struct tabla_priv *priv,
 			__func__);
 		tabla_codec_enable_hs_detect(codec, 1, MBHC_USE_HPHL_TRIGGER,
 					     false);
-	} else {
+	} else  {
 		pr_debug("%s: HPHL trigger received, detecting plug type\n",
 			__func__);
 		tabla_codec_detect_plug_type(codec);
@@ -7777,9 +7777,9 @@ static irqreturn_t tabla_hs_remove_irq(int irq, void *data)
 
 	if ((priv->mbhc_cfg.detect_extn_cable &&
 	     !tabla_hs_gpio_level_remove(priv)) ||
-	    !priv->mbhc_cfg.gpio)
+	    !priv->mbhc_cfg.gpio) {
 		tabla_hs_remove_irq_nogpio(priv);
-	else
+	} else
 		tabla_hs_remove_irq_gpio(priv);
 
 	/* if driver turned off vddio switch and headset is not removed,

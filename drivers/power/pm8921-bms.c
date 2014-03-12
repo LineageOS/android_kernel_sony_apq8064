@@ -1,6 +1,5 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Sony Mobile Communications AB.
- * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -202,6 +201,9 @@ struct pm8921_bms_chip {
 	int			pon_disable_flat_portion_ocv;
 	int			pon_ocv_dis_high_soc;
 	int			pon_ocv_dis_low_soc;
+	int			high_ocv_correction_limit_uv;
+	int			low_ocv_correction_limit_uv;
+	int			hold_soc_est;
 	int			prev_vbat_batt_terminal_uv;
 	int			vbatt_cutoff_count;
 	int			low_voltage_detect;
@@ -228,9 +230,9 @@ static struct pm8921_bms_chip *the_chip;
 #define DEFAULT_CHARGE_CYCLES		0
 #define DEFAULT_RATIO			1000
 
-#define DELTA_FCC_PERCENT	100
-#define MIN_START_PERCENT_FOR_LEARNING	100
-#define MIN_START_OCV_PERCENT_FOR_LEARNING	100
+#define DELTA_FCC_PERCENT			100
+#define MIN_START_PERCENT_FOR_LEARNING		100
+#define MIN_START_OCV_PERCENT_FOR_LEARNING	30
 #define MAX_FCC_LEARNING_COUNT			5
 #define VALID_FCC_CHGCYL_RANGE			50
 
@@ -1949,6 +1951,7 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 	int m = 0;
 	int rc = 0;
 	int delta_ocv_uv_limit = 0;
+	int correction_limit_uv = 0;
 	bool below_cutoff = false;
 
 	rc = pm8921_bms_get_simultaneous_battery_voltage_and_current(
@@ -1995,17 +1998,13 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 
 	/*
 	 * do not adjust
-	 * if soc is same as what bms calculated
-	 * if soc_est is between 45 and 25, this is the flat portion of the
-	 * curve where soc_est is not so accurate. We generally don't want to
-	 * adjust when soc_est is inaccurate except for the cases when soc is
-	 * way far off (higher than 50 or lesser than 20).
-	 * Also don't adjust soc if it is above 90 becuase we might pull it low
+	 * if soc_est is same as what bms calculated
+	 * OR if soc_est > 15
+	 * OR if soc it is above 90 because we might pull it low
 	 * and  cause a bad user experience
 	 */
 	if (soc_est == soc
-		|| (is_between(45, chip->adjust_soc_low_threshold, soc_est)
-		&& is_between(50, chip->adjust_soc_low_threshold - 5, soc))
+		|| soc_est > 15
 		|| soc >= 90)
 		goto out;
 
@@ -2059,6 +2058,22 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 		goto skip_limiting_corrections;
 	}
 
+	if (chip->last_ocv_uv > 3800000)
+		correction_limit_uv = the_chip->high_ocv_correction_limit_uv;
+	else
+		correction_limit_uv = the_chip->low_ocv_correction_limit_uv;
+
+	if (abs(delta_ocv_uv) > correction_limit_uv) {
+		pr_debug("limiting delta ocv %d limit = %d\n", delta_ocv_uv,
+				correction_limit_uv);
+
+		if (delta_ocv_uv > 0)
+			delta_ocv_uv = correction_limit_uv;
+		else
+			delta_ocv_uv = -1 * correction_limit_uv;
+		pr_debug("new delta ocv = %d\n", delta_ocv_uv);
+	}
+
 skip_limiting_corrections:
 	chip->last_ocv_uv -= delta_ocv_uv;
 
@@ -2077,7 +2092,7 @@ out_check:
 	 * if soc_new is ZERO force it higher so that phone doesnt report soc=0
 	 * soc = 0 should happen only when soc_est == 0
 	 */
-	if (soc_new == 0 && soc_est != 0)
+	if (soc_new == 0 && soc_est >= the_chip->hold_soc_est)
 		soc_new = 1;
 
 	soc = soc_new;
@@ -3323,7 +3338,6 @@ static int set_battery_data(struct pm8921_bms_chip *chip)
 	chip->rbatt_capacitive_mohm = batt_data->rbatt_capacitive_mohm;
 
 	return 0;
-
 }
 
 enum bms_request_operation {
@@ -3457,7 +3471,7 @@ static int get_reading(void *data, u64 * val)
 
 	mutex_lock(&the_chip->last_ocv_uv_mutex);
 	read_soc_params_raw(the_chip, &raw, 300);
-	mutex_lock(&the_chip->last_ocv_uv_mutex);
+	mutex_unlock(&the_chip->last_ocv_uv_mutex);
 
 	*val = 0;
 
@@ -4047,6 +4061,11 @@ static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 	chip->pon_ocv_dis_high_soc = pdata->pon_ocv_dis_high_soc;
 	chip->pon_ocv_dis_low_soc = pdata->pon_ocv_dis_low_soc;
 
+	chip->high_ocv_correction_limit_uv
+					= pdata->high_ocv_correction_limit_uv;
+	chip->low_ocv_correction_limit_uv = pdata->low_ocv_correction_limit_uv;
+	chip->hold_soc_est = pdata->hold_soc_est;
+
 	chip->alarm_low_mv = pdata->alarm_low_mv;
 	chip->alarm_high_mv = pdata->alarm_high_mv;
 	chip->low_voltage_detect = pdata->low_voltage_detect;
@@ -4188,7 +4207,7 @@ static int pm8921_bms_resume(struct device *dev)
 
 static const struct dev_pm_ops pm8921_bms_pm_ops = {
 	.resume		= pm8921_bms_resume,
-	.suspend 	= pm8921_bms_suspend,
+	.suspend	= pm8921_bms_suspend,
 };
 
 static struct platform_driver pm8921_bms_driver = {
