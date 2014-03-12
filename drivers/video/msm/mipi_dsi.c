@@ -273,6 +273,8 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	ret = panel_next_on(pdev);
 
+	udelay(10);
+
 	mipi_dsi_op_mode_config(mipi->mode);
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {

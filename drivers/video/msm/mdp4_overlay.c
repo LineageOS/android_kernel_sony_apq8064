@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1049,13 +1050,28 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	outpdw(vg_base + 0x0008, dst_size);	/* MDP_RGB_DST_SIZE */
 	outpdw(vg_base + 0x000c, dst_xy);	/* MDP_RGB_DST_XY */
 
-	/* TILE frame size */
 	if (pipe->frame_format != MDP4_FRAME_FORMAT_LINEAR) {
-		if ((ctrl->panel_mode & MDP4_PANEL_DSI_CMD && pipe->mixer_num == 0) ||
-			(ctrl->panel_mode & MDP4_PANEL_WRITEBACK && pipe->mixer_num == 2))
-			outpdw(vg_base + 0x0048, frame_size);
-		else
-			pipe->frame_size = frame_size;
+		struct mdp4_overlay_pipe *real_pipe;
+		u32 psize, csize;
+
+		/*
+		 * video tile frame size register is NOT double buffered.
+		 * when this register updated, it kicks in immediatly
+		 * During transition from smaller resolution to higher
+		 * resolution  it may have possibility that mdp still fetch
+		 * from smaller resolution buffer with new higher resolution
+		 * frame size. This will cause iommu page fault.
+		 */
+		real_pipe = mdp4_overlay_ndx2pipe(pipe->pipe_ndx);
+		psize = real_pipe->prev_src_height * real_pipe->prev_src_width;
+		csize = pipe->src_height * pipe->src_width;
+		if (psize && (csize > psize)) {
+			frame_size = (real_pipe->prev_src_height << 16 |
+					real_pipe->prev_src_width);
+		}
+		outpdw(vg_base + 0x0048, frame_size);	/* TILE frame size */
+		real_pipe->prev_src_height = pipe->src_height;
+		real_pipe->prev_src_width = pipe->src_width;
 	}
 
 	/*
@@ -1888,6 +1904,7 @@ void mdp4_mixer_stage_commit(int mixer)
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_clk_ctrl(0);
 }
+
 
 void mdp4_mixer_stage_up(struct mdp4_overlay_pipe *pipe, int commit)
 {
@@ -2978,7 +2995,12 @@ static int mdp4_calc_pipe_mdp_bw(struct msm_fb_data_type *mfd,
 	}
 
 	fps = mdp_get_panel_framerate(mfd);
-	quota = pipe->src_w * pipe->src_h * fps * pipe->bpp;
+
+	/*
+	 * Workaround for issue when 2bpp and 4bpp pipes in use,
+	 * always use max bpp to avoid underrun
+	*/
+	quota = pipe->src_w * pipe->src_h * fps * 4;
 
 	quota >>= shift;
 	/* factor 1.15 for ab */
@@ -3122,6 +3144,10 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	u64 ab_quota_port0 = 0, ib_quota_port0 = 0;
 	u64 ab_quota_port1 = 0, ib_quota_port1 = 0;
 	u64 ib_quota_min = 0;
+	u32 fps;
+	u32 quota;
+	static u64 ib_quota_total_min;
+	u32 shift = 16;
 
 	if (!mfd) {
 		pr_err("%s: mfd is null!\n", __func__);
@@ -3222,6 +3248,22 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 
 	perf_req->mdp_ab_bw = roundup(ab_quota_total, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_bw = roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
+
+	if (!ib_quota_total_min) {
+		fps = mdp_get_panel_framerate(mfd);
+		quota = (mfd->panel_info.xres *
+				mfd->panel_info.yres * fps * 4);
+		quota >>= shift;
+		ib_quota_total_min = quota * mdp_bw_ib_factor / 100;
+		ib_quota_total_min <<= shift;
+		ib_quota_total_min =
+			roundup(ib_quota_total_min, MDP_BUS_SCALE_AB_STEP);
+	}
+
+	if (pipe->mixer_num == MDP4_MIXER0) {
+		if (ib_quota_total_min > perf_req->mdp_ib_bw)
+			perf_req->mdp_ib_bw = ib_quota_total_min;
+	}
 
 	perf_req->mdp_ab_port0_bw =
 		roundup(ab_quota_port0, MDP_BUS_SCALE_AB_STEP);
@@ -4011,6 +4053,8 @@ int mdp4_overlay_commit(struct fb_info *info)
 
 	mutex_lock(&mfd->dma->ov_mutex);
 
+	mdp4_overlay_mdp_perf_upd(mfd, 1);
+
 	msm_fb_wait_for_fence(mfd);
 
 	switch (mfd->panel.type) {
@@ -4037,6 +4081,7 @@ int mdp4_overlay_commit(struct fb_info *info)
 	}
 	msm_fb_signal_timeline(mfd);
 
+	mdp4_overlay_mdp_perf_upd(mfd, 0);
 	mdp4_unmap_sec_resource(mfd);
 	if (release_busy)
 		mutex_unlock(&mfd->dma->ov_mutex);
