@@ -129,6 +129,7 @@
 	(((val) + (grid) - 1) / (grid) * (grid))
 
 #define VCD_DDL_720P_YUV_BUF_SIZE     ((1280*720*3) >> 1)
+#define VCD_DDL_1080P_YUV_BUF_SIZE     ((1920*1080*3) >> 1)
 #define VCD_DDL_WVGA_BUF_SIZE         (800*480)
 
 #define VCD_DDL_TEST_MAX_WIDTH        (DDL_MAX_FRAME_WIDTH)
