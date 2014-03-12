@@ -832,6 +832,11 @@ EXPORT_SYMBOL(kgsl_late_resume_driver);
  */
 static void kgsl_destroy_process_private(struct kref *kref)
 {
+
+	struct kgsl_mem_entry *entry = NULL;
+	int next = 0;
+
+
 	struct kgsl_process_private *private = container_of(kref,
 			struct kgsl_process_private, refcount);
 
@@ -853,6 +858,20 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	if (private->debug_root)
 		debugfs_remove_recursive(private->debug_root);
 
+	while (1) {
+		rcu_read_lock();
+		entry = idr_get_next(&private->mem_idr, &next);
+		rcu_read_unlock();
+		if (entry == NULL)
+			break;
+		kgsl_mem_entry_put(entry);
+		/*
+		 * Always start back at the beginning, to
+		 * ensure all entries are removed,
+		 * like list_for_each_entry_safe.
+		 */
+		next = 0;
+	}
 	kgsl_mmu_putpagetable(private->pagetable);
 	idr_destroy(&private->mem_idr);
 
