@@ -1339,18 +1339,8 @@ static void __exit mhl_sii_exit(void)
 	kfree(mhl_state);
 }
 
-
-/*
- * We have to use late_initcall instead of module_init.
- * Because, when we use module_init, the issue occurred
- * that cannot charge a phone from dongle or MHL straight cable
- * when a phone is a power off state.
- * This reason is cause that reading DEV_CAT of mhl_msc_command_done()
- * of the MHL driver is run before calling pm8921_charger_probe().
- * To solve this issue, It is necessary for us to call late_initcall
- * which pm8921_charger driver called.
- */
-late_initcall(mhl_sii_init);
+/* sync with pm8921-charger, we should start later */
+late_initcall_sync(mhl_sii_init);
 module_exit(mhl_sii_exit);
 
 MODULE_LICENSE("GPL v2");

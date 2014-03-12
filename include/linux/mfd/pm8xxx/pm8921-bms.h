@@ -1,6 +1,5 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Sony Mobile Communications AB.
- * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,6 +56,14 @@ struct pm8xxx_bms_core_data {
  * @pon_ocv_dis_low_soc:	the lower power on ocv soc percent to disregard
  * @low_voltage_detect:		feature to enable 0 SOC reporting on low voltage
  * @vbatt_cutoff_retries:	number of tries before we report a 0 SOC
+ * @high_ocv_correction_limit_uv:	the max amount of OCV corrections
+ *					allowed when ocv is high
+ *					(higher than 3.8V)
+ * @low_ocv_correction_limit_uv:	the max amount of OCV corrections
+ *					allowed when ocv is low
+ *					(lower or equal to 3.8V)
+ * @hold_soc_est:		the min est soc below which the calculated soc
+ *				is allowed to go to 0%
  */
 struct pm8921_bms_platform_data {
 	struct pm8xxx_bms_core_data	bms_cdata;
@@ -86,6 +93,9 @@ struct pm8921_bms_platform_data {
 	int				pon_ocv_dis_low_soc;
 	int				low_voltage_detect;
 	int				vbatt_cutoff_retries;
+	int				high_ocv_correction_limit_uv;
+	int				low_ocv_correction_limit_uv;
+	int				hold_soc_est;
 };
 
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)

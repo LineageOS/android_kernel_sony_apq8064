@@ -733,6 +733,33 @@ config RAMDUMP_TAGS
 	  aside to hold the information which will later be used by
 	  the ramdump application.
 
+config SONY_FELICA_SUPPORT
+	bool "Enable FeliCa support"
+	default n
+	help
+	  This option enables support for FeliCa.
+
+config SONY_FELICA_NFC_SUPPORT
+	bool "Enable FeliCa/NFC combination device support"
+	default n
+	depends on SONY_FELICA_SUPPORT
+	help
+	  This option enables support for FeliCa/NFC combination device.
+
+config SONY_ONESEG_TUNER_PM
+	tristate "SONY Oneseg tuner pm driver"
+	default n
+	depends on GENERIC_GPIO
+	help
+	  Select this module to enable SONY Oneseg Tuner PM Driver.
+
+config SOMC_ISDBT_TUNER
+	tristate "SOMC ISDBT/Tmm tuner driver for SMT-EJ103"
+	default n
+	depends on I2C
+	help
+	  Select this module to enable SOMC ISDB-T Tuner Driver.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
