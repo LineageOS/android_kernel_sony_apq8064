@@ -126,7 +126,6 @@ struct mmc_data {
 	bool			fault_injected; /* fault injected */
 };
 
-struct mmc_host;
 struct mmc_request {
 	struct mmc_command	*sbc;		/* SET_BLOCK_COUNT for multiblock */
 	struct mmc_command	*cmd;
@@ -138,6 +137,7 @@ struct mmc_request {
 	struct mmc_host		*host;
 };
 
+struct mmc_host;
 struct mmc_card;
 struct mmc_async_req;
 

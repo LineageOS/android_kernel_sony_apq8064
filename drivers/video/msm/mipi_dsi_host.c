@@ -1,5 +1,5 @@
-
 /* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -66,6 +66,8 @@ enum {
 };
 
 struct dcs_cmd_list	cmdlist;
+
+static void mipi_dsi_wait4video_eng_busy(void);
 
 #ifdef CONFIG_FB_MSM_MDP40
 void mipi_dsi_mdp_stat_inc(int which)
@@ -1062,8 +1064,11 @@ void mipi_dsi_wait4video_done(void)
 	mipi_dsi_enable_irq(DSI_VIDEO_TERM);
 	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 
-	wait_for_completion_timeout(&dsi_video_comp,
-					msecs_to_jiffies(VSYNC_PERIOD * 4));
+	if (!wait_for_completion_timeout(&dsi_video_comp,
+				msecs_to_jiffies(200))) {
+			mipi_dsi_sw_reset();
+			pr_err("%s: dsi video done timeout error\n", __func__);
+	}
 }
 
 void mipi_dsi_mdp_busy_wait(void)
@@ -1187,6 +1192,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
 	video_mode = dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
 	if (video_mode) {
+		mipi_dsi_wait4video_eng_busy();
 		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 	}
