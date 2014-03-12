@@ -22,6 +22,7 @@
 
 #define MMC_QUEUE_BOUNCESZ	65536
 
+#define MMC_QUEUE_SUSPENDED	(1 << 0)
 
 /*
  * Based on benchmark tests the default num of requests to trigger the write
