@@ -2135,7 +2135,7 @@ static struct i2c_board_info mxt_device_info_8930[] __initdata = {
 	},
 };
 
-/*»     Synaptics Thin Driver»  */
+/*Â»     Synaptics Thin DriverÂ»  */
 
 #define CLEARPAD3202_ADDR 0x20
 #define CLEARPAD3202_ATTEN_GPIO (11)

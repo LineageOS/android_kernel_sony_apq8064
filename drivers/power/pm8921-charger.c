@@ -449,6 +449,8 @@ struct pm8921_chg_chip {
 	bool				disable_aicl;
 	int				usb_type;
 	bool				disable_chg_rmvl_wrkarnd;
+	bool				enable_tcxo_warmup_delay;
+	struct msm_xo_voter		*voter;
 	struct wake_lock		unplug_wake_lock;
 	spinlock_t			chg_disable_lock;
 	struct pm8921_soc_scaling	soc_scale;
@@ -462,8 +464,6 @@ struct pm8921_chg_chip {
 	unsigned int			safety_time;
 	int				repeat_safety_time;
 	struct pm8921_chg_plug_debounce	chg_plug_debounce;
-	bool				enable_tcxo_warmup_delay;
-	struct msm_xo_voter		*voter;
 };
 
 /* user space parameter to limit usb current */
@@ -484,8 +484,6 @@ static int disable_safety_timer;
 module_param(disable_safety_timer, int, 0644);
 static int repeat_count;
 module_param(repeat_count, int, 0644);
-static int eoc_bat_fet_close;
-module_param(eoc_bat_fet_close, int, 0644);
 
 static struct pm8921_chg_chip *the_chip;
 static void check_temp_thresholds(struct pm8921_chg_chip *chip);
@@ -727,9 +725,6 @@ static int update_disable_charge_state(struct pm8921_chg_chip *chip,
 
 		en_bit_val = chg_en_set_data[bitno].chg_auto_en_bit_val;
 		dis_bit_val = chg_en_set_data[bitno].chg_dis_bit_val;
-
-		if (bitno == DIS_BIT_EOC && eoc_bat_fet_close && !dis_bit_val)
-			dis_bit_val = true;
 	}
 
 	rc = pm_chg_auto_enable(chip, en_bit_val);
@@ -1959,10 +1954,6 @@ static int get_prop_batt_status(struct pm8921_chg_chip *chip)
 				chip->soc_scale.override_full_to_not_chg))
 
 			batt_state = POWER_SUPPLY_STATUS_NOT_CHARGING;
-	} else if (fsm_state == FSM_STATE_ON_BAT_3 &&
-			charging_disabled == DIS_BIT_EOC_MASK &&
-			power_supply_am_i_supplied(&chip->batt_psy)) {
-		batt_state = POWER_SUPPLY_STATUS_FULL;
 	}
 	return batt_state;
 }
@@ -3120,7 +3111,8 @@ static irqreturn_t usbin_valid_irq_handler(int irq, void *data)
 
 	if (usb_target_ma)
 		schedule_delayed_work(&the_chip->vin_collapse_check_work,
-			      msecs_to_jiffies(VIN_MIN_COLLAPSE_CHECK_MS));
+				      round_jiffies_relative(msecs_to_jiffies
+						(VIN_MIN_COLLAPSE_CHECK_MS)));
 	else
 	    handle_usb_insertion_removal(data);
 
@@ -3569,7 +3561,6 @@ static void unplug_check_worker(struct work_struct *work)
 			"Stop: chg removed reg_loop = %d, fsm = %d ibat = %d\n",
 				pm_chg_get_regulation_loop(chip),
 				pm_chg_get_fsm_state(chip), ibat);
-
 			/*
 			 * just in case, if notification is not
 			 * done in the interrupt
@@ -5874,10 +5865,10 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->ibatmax_max_adj_ma = find_ibat_max_adj_ma(
 					chip->max_bat_chg_current);
 
+	chip->voter = msm_xo_get(MSM_XO_TCXO_D0, "pm8921_charger");
 	spin_lock_init(&chip->chg_disable_lock);
 	spin_lock_init(&chip->chg_plug_debounce.lock);
 
-	chip->voter = msm_xo_get(MSM_XO_TCXO_D0, "pm8921_charger");
 	rc = pm8921_chg_hw_init(chip);
 	if (rc) {
 		pr_err("couldn't init hardware rc=%d\n", rc);

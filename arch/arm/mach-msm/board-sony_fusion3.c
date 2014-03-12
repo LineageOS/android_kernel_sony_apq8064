@@ -102,12 +102,25 @@
 #include <linux/apds9702.h>
 #endif
 #include <linux/console.h>
+#ifdef CONFIG_SONY_ONESEG_TUNER_PM
+#include "board-sony_yuga-oneseg.h"
+#endif
+#ifdef CONFIG_SOMC_ISDBT_TUNER
+#include "board-sony_fusion3-isdbt.h"
+#endif
 #include <mach/restart.h>
 #include <mach/msm_iomap.h>
+#ifdef CONFIG_MSM_GSBI7_UART
+#include <mach/msm_serial_hs_lite.h>
+#include <linux/serial_core.h>
+#endif
 #ifdef CONFIG_BACKLIGHT_LP855X
 #include <linux/lp855x.h>
 #endif
 
+#ifdef CONFIG_SONY_FELICA_SUPPORT
+#include "felica-fusion3.h"
+#endif
 #ifdef CONFIG_INPUT_BU52031NVX
 #include <linux/bu52031nvx.h>
 #endif
@@ -163,7 +176,7 @@
 #define MSM_ION_MFC_META_SIZE	0x40000 /* 256 Kbytes */
 #define MSM_CONTIG_MEM_SIZE	0x65000
 #ifdef CONFIG_MSM_IOMMU
-#define MSM_ION_MM_SIZE		0x5000000
+#define MSM_ION_MM_SIZE		0x6000000
 #define MSM_ION_CAMERA_SIZE	0x3200000
 #define MSM_ION_SF_SIZE		0
 #define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
@@ -332,6 +345,8 @@ static void __init reserve_rtb_memory(void)
 {
 #if defined(CONFIG_MSM_RTB)
 	apq8064_reserve_table[MEMTYPE_EBI1].size += apq8064_rtb_pdata.size;
+	pr_info("mem_map: rtb reserved with size 0x%x in pool\n",
+			apq8064_rtb_pdata.size);
 #endif
 }
 
@@ -364,7 +379,9 @@ static void __init reserve_pmem_memory(void)
 	reserve_memory_for(&android_pmem_pdata);
 	reserve_memory_for(&android_pmem_audio_pdata);
 #endif /*CONFIG_MSM_MULTIMEDIA_USE_ION*/
-apq8064_reserve_table[MEMTYPE_EBI1].size += msm_contig_mem_size;
+    apq8064_reserve_table[MEMTYPE_EBI1].size += msm_contig_mem_size;
+	pr_info("mem_map: contig_mem reserved with size 0x%x in pool\n",
+			msm_contig_mem_size);
 #endif /*CONFIG_ANDROID_PMEM*/
 }
 
@@ -544,6 +561,9 @@ static void __init apq8064_reserve_fixed_area(unsigned long fixed_area_size)
 
 	ret = memblock_remove(reserve_info->fixed_area_start,
 		reserve_info->fixed_area_size);
+	pr_info("mem_map: fixed_area reserved at 0x%lx with size 0x%lx\n",
+		reserve_info->fixed_area_start,
+		reserve_info->fixed_area_size);
 	BUG_ON(ret);
 #endif
 }
@@ -613,7 +633,7 @@ static void __init reserve_ion_memory(void)
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
-			else
+			else if (!use_cma)
 				reserve_mem_for_ion(MEMTYPE_EBI1, heap->size);
 
 			if (fixed_position == FIXED_LOW) {
@@ -657,6 +677,9 @@ static void __init reserve_ion_memory(void)
 		BUG_ON(!IS_ALIGNED(fixed_low_size + HOLE_SIZE, SECTION_SIZE));
 		ret = memblock_remove(fixed_low_start,
 				      fixed_low_size + HOLE_SIZE);
+		pr_info("mem_map: fixed_low_area reserved at 0x%lx with size \
+				0x%x\n", fixed_low_start,
+				      fixed_low_size + HOLE_SIZE);
 		BUG_ON(ret);
 	}
 
@@ -667,6 +690,9 @@ static void __init reserve_ion_memory(void)
 	} else {
 		BUG_ON(!IS_ALIGNED(fixed_middle_size, SECTION_SIZE));
 		ret = memblock_remove(fixed_middle_start, fixed_middle_size);
+		pr_info("mem_map: fixed_middle_area reserved at 0x%lx with \
+				size 0x%x\n", fixed_middle_start,
+				fixed_middle_size);
 		BUG_ON(ret);
 	}
 
@@ -678,6 +704,9 @@ static void __init reserve_ion_memory(void)
 		/* This is the end of the fixed area so it's okay to round up */
 		fixed_high_size = ALIGN(fixed_high_size, SECTION_SIZE);
 		ret = memblock_remove(fixed_high_start, fixed_high_size);
+		pr_info("mem_map: fixed_high_area reserved at 0x%lx with size \
+				0x%x\n", fixed_high_start,
+				fixed_high_size);
 		BUG_ON(ret);
 	}
 
@@ -745,6 +774,8 @@ static void __init reserve_cache_dump_memory(void)
 	total = apq8064_cache_dump_pdata.l1_size +
 		apq8064_cache_dump_pdata.l2_size;
 	apq8064_reserve_table[MEMTYPE_EBI1].size += total;
+	pr_info("mem_map: cache_dump reserved with size 0x%x in pool\n",
+			total);
 #endif
 }
 
@@ -3621,6 +3652,45 @@ struct platform_device semc_gpios_device = {
 };
 #endif
 
+#ifdef CONFIG_MSM_GSBI7_UART
+#define GSBI7_UART_TX_GPIO 82
+#define GSBI7_UART_RX_GPIO 83
+static int felica_uart_pre_startup(struct uart_port *uport)
+{
+	struct tty_struct *tty = uport->state->port.tty;
+
+	mutex_lock(&tty->termios_mutex);
+	tty->termios->c_ispeed = 460800;
+	tty->termios->c_ospeed = 460800;
+	tty->termios->c_cflag |= B460800;
+	tty->termios->c_cflag &= ~0xD;
+	tty->termios->c_cflag |= (CLOCAL | CREAD);
+	tty->termios->c_cflag &= ~PARENB;
+	tty->termios->c_cflag &= ~CSTOPB;
+	tty->termios->c_cflag &= ~CSIZE;
+	tty->termios->c_cflag &= ~PARODD;
+	tty->termios->c_cflag |= CS8;
+	tty->termios->c_lflag &= ~(ICANON | IEXTEN | ISIG | ECHO);
+	tty->termios->c_oflag &= ~OPOST;
+	tty->termios->c_iflag &= ~(ICRNL | INPCK | ISTRIP |
+						IXON | BRKINT);
+	tty->termios->c_cc[VMIN] = 0;
+	tty->termios->c_cc[VTIME] = 0;
+	tty->ldisc->ops->set_termios(tty, NULL);
+	mutex_unlock(&tty->termios_mutex);
+
+	return 0;
+}
+
+static struct msm_serial_hslite_platform_data msm_uart_gsbi7_pdata = {
+	.config_gpio    = 1,
+	.uart_tx_gpio   = GSBI7_UART_TX_GPIO,
+	.uart_rx_gpio   = GSBI7_UART_RX_GPIO,
+	.line           = 3,
+	.pre_startup    = felica_uart_pre_startup,
+};
+#endif
+
 #ifdef CONFIG_INPUT_BU52031NVX
 #define BU52031NVX_GPIO PM8921_GPIO_PM_TO_SYS(2)
 
@@ -3796,6 +3866,15 @@ static struct platform_device *common_devices[] __initdata = {
 	&battery_bcl_device,
 #endif
 	&apq8064_msm_mpd_device,
+#ifdef CONFIG_SONY_ONESEG_TUNER_PM
+	&oneseg_tunerpm_device,
+#endif
+#ifdef CONFIG_SOMC_ISDBT_TUNER
+	&isdbt_tunerpm_device,
+#endif
+#ifdef CONFIG_SONY_FELICA_SUPPORT
+	&sony_felica_device,
+#endif
 #ifdef CONFIG_INPUT_BU52031NVX
 	&bu52031nvx_device,
 #endif
@@ -3804,6 +3883,9 @@ static struct platform_device *common_devices[] __initdata = {
 static struct platform_device *cdp_devices[] __initdata = {
 	&apq8064_device_uart_gsbi1,
 	&apq8064_device_uart_gsbi5,
+#ifdef CONFIG_MSM_GSBI7_UART
+	&apq8064_device_uart_gsbi7,
+#endif
 	&msm_device_sps_apq8064,
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
@@ -4383,6 +4465,9 @@ static void __init apq8064_common_init(void)
 	apq8064_device_otg.dev.platform_data = &msm_otg_pdata;
 	apq8064_ehci_host_init();
 	apq8064_init_buses();
+#ifdef CONFIG_MSM_GSBI7_UART
+	apq8064_device_uart_gsbi7.dev.platform_data = &msm_uart_gsbi7_pdata;
+#endif
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 		msm_hsic_pdata.swfi_latency =
 			msm_rpmrs_levels[0].latency_us;
