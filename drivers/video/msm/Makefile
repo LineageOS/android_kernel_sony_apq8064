@@ -92,6 +92,7 @@ obj-$(CONFIG_FB_MSM_MIPI_R63306_SHARP_LS046K3SX01) += mipi_dsi_panel_r63306_shar
 obj-$(CONFIG_FB_MSM_MIPI_R63311_SHARP_LS050T3SX02) += mipi_dsi_panel_r63311_sharp_ls050t3sx02.o
 obj-$(CONFIG_FB_MSM_MIPI_R63306_TMD_MDW30) += mipi_dsi_panel_r63306_tmd_mdw30.o
 obj-$(CONFIG_FB_MSM_MIPI_R63311_JDC_MDY70) += mipi_dsi_panel_r63311_jdc_mdy70.o
+obj-$(CONFIG_FB_MSM_MIPI_R63311_JDC_MDY71) += mipi_dsi_panel_r63311_jdc_mdy71.o
 obj-$(CONFIG_FB_MSM_MIPI_R63311_JDC_MDY80) += mipi_dsi_panel_r63311_jdc_mdy80.o
 obj-$(CONFIG_FB_MSM_MIPI_R63311_SHARP_LS050T3SX01) += mipi_dsi_panel_r63311_sharp_ls050t3sx01.o
 obj-$(CONFIG_FB_MSM_MIPI_NT71391_PANASONIC_VVX10F008B00) += mipi_dsi_panel_nt71391_panasonic_vvx10f008b00.o
