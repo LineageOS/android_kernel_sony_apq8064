@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7af24918_5e890aca",
+        "filename": "kernel/hrtimer.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 8214
+      },
+      "writtenOn": "2014-04-14T08:28:20Z",
+      "side": 1,
+      "message": "on looking at the past commits, and  recent commits on the origin of this commit, this file shouldn\u0027t be edited at all.. for see link when kali- https://github.com/daeiron/android_kernel_sony_apq8064/commit/3a14d24a898f2fcd2af4a467647c7b949f2ae929",
+      "revId": "dd339c727dbba66a4982bb8c8be797e162ef0dec",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
