@@ -54,7 +54,7 @@
 #define CRASH_NOTE_BYTES sizeof(struct crash_extras_t)
 
 typedef u32 note_buf_t[CRASH_NOTE_SIZE / 4];
-note_buf_t *crash_notes;
+static note_buf_t *crash_notes;
 
 static inline void dump_regs(struct pt_regs *regs)
 {
