@@ -791,6 +791,17 @@ static void __init apq8064_reserve(void)
 {
 	apq8064_set_display_params(prim_panel_name, ext_panel_name,
 		ext_resolution);
+#ifdef CONFIG_KEXEC_HARDBOOT
+	// Reserve space for hardboot page, just before the ram_console
+	//struct membank* bank = &meminfo.bank[0];
+	//phys_addr_t start = bank->start + bank->size - SZ_1M - 0x00300000;
+	phys_addr_t start = KEXEC_HB_PAGE_ADDR;
+	int ret = memblock_remove(start, SZ_1M);
+	if(!ret)
+		pr_info("Hardboot page reserved at 0x%X\n", start);
+	else
+		pr_err("Failed to reserve space for hardboot page at 0x%X!\n", start);
+#endif
 	msm_reserve();
 }
 
