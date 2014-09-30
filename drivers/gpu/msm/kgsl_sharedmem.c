@@ -377,6 +377,11 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 
 			page = nth_page(page, pgoff);
 
+			if (!memdesc->faulted[pgoff]) {
+				memdesc->faulted[pgoff] = 1;
+				__inc_zone_page_state(page, NR_FILE_PAGES);
+			}
+
 			get_page(page);
 			vmf->page = page;
 
@@ -604,6 +609,13 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	memdesc->pagetable = pagetable;
 	memdesc->ops = &kgsl_page_alloc_ops;
+
+	memdesc->faulted = kzalloc(sglen_alloc*sizeof(int), GFP_KERNEL);
+
+	if (memdesc->faulted == NULL) {
+		ret = -ENOMEM;
+		goto done;
+	}
 
 	memdesc->sglen_alloc = sglen_alloc;
 	memdesc->sg = kgsl_sg_alloc(memdesc->sglen_alloc);
@@ -839,6 +851,7 @@ void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc)
 		memdesc->ops->free(memdesc);
 
 	kgsl_sg_free(memdesc->sg, memdesc->sglen_alloc);
+	kfree(memdesc->faulted);
 
 	memset(memdesc, 0, sizeof(*memdesc));
 }

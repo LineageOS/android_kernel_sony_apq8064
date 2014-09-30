@@ -9,6 +9,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
+ * NOTE: This file has been modified by Sony Mobile Communications AB.
+ * Modifications are licensed under the License.
  */
 #ifndef __KGSL_H
 #define __KGSL_H
@@ -30,7 +32,7 @@
 /* The number of memstore arrays limits the number of contexts allowed.
  * If more contexts are needed, update multiple for MEMSTORE_SIZE
  */
-#define KGSL_MEMSTORE_SIZE	((int)(PAGE_SIZE * 2))
+#define KGSL_MEMSTORE_SIZE	((int)(PAGE_SIZE * 3))
 #define KGSL_MEMSTORE_GLOBAL	(0)
 #define KGSL_MEMSTORE_MAX	(KGSL_MEMSTORE_SIZE / \
 		sizeof(struct kgsl_devmemstore) - 1)
