@@ -1,5 +1,9 @@
 /*
 * Copyright (C) 2013 Invensense, Inc.
+<<<<<<< HEAD
+=======
+* Copyright (C) 2013 Sony Mobile Communications.
+>>>>>>> dfbc323... 10.5.1.A.0.292: Open source for Xperia Z, ZL, ZR, Tablet Z
 *
 * This software is licensed under the terms of the GNU General Public
 * License version 2, as published by the Free Software Foundation, and
@@ -9,6 +13,12 @@
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU General Public License for more details.
+<<<<<<< HEAD
+=======
+*
+* NOTE: This file has been modified by Sony Mobile Communications AB.
+* Modifications are licensed under the License.
+>>>>>>> dfbc323... 10.5.1.A.0.292: Open source for Xperia Z, ZL, ZR, Tablet Z
 */
 #include <linux/module.h>
 #include <linux/init.h>

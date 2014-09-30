@@ -391,7 +391,7 @@ static void msm_fb_shutdown(struct platform_device *pdev)
                return;
        }
        lock_fb_info(mfd->fbi);
-       msm_fb_release_all(mfd->fbi, true);
+	msm_fb_release_all(mfd->fbi, true);
        unlock_fb_info(mfd->fbi);
 }
 static int msm_fb_probe(struct platform_device *pdev)
@@ -1925,7 +1925,7 @@ static int msm_fb_release_all(struct fb_info *info, boolean is_all)
 }
 static int msm_fb_release(struct fb_info *info, int user)
 {
-        return msm_fb_release_all(info, false);
+	return msm_fb_release_all(info, false);
 }
 
 void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)

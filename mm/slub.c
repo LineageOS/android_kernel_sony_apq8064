@@ -8,6 +8,12 @@
  * (C) 2007 SGI, Christoph Lameter
  * (C) 2011 Linux Foundation, Christoph Lameter
  * Copyright (C) 2013 Sony Mobile Communications AB.
+<<<<<<< HEAD
+=======
+ *
+ * NOTE: This file has been modified by Sony Mobile Communications AB.
+ * Modifications are licensed under the License.
+>>>>>>> dfbc323... 10.5.1.A.0.292: Open source for Xperia Z, ZL, ZR, Tablet Z
  */
 
 #include <linux/mm.h>
