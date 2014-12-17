@@ -542,6 +542,7 @@ struct page *dma_alloc_from_contiguous(struct device *dev, int count,
 			break;
 		} else if (ret != -EBUSY) {
 			clear_cma_bitmap(cma, pfn, count);
+			pfn = 0;
 			break;
 		}
 		clear_cma_bitmap(cma, pfn, count);
