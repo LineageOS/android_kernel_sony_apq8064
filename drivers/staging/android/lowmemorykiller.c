@@ -185,7 +185,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int rem = 0;
 	int tasksize;
 	int i;
-	int min_score_adj = OOM_SCORE_ADJ_MAX + 1;
+	int ret = 0;
+	short min_score_adj = OOM_SCORE_ADJ_MAX + 1;
 	int minfree = 0;
 	int selected_tasksize = 0;
 	int selected_oom_score_adj;
@@ -225,6 +226,10 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 
 		if ((min_score_adj == OOM_SCORE_ADJ_MAX + 1) &&
 				(sc->nr_to_scan > 0))
+			trace_almk_shrink(0, ret, other_free, other_file, 0);
+
+		if ((min_score_adj == OOM_SCORE_ADJ_MAX + 1) &&
+			(nr_to_scan > 0))
 			trace_almk_shrink(0, ret, other_free, other_file, 0);
 
 		return rem;
@@ -293,7 +298,16 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		send_sig(SIGKILL, selected, 0);
 		rem -= selected_tasksize;
+		rcu_read_unlock();
+		/* give the system time to free up the memory */
+		msleep_interruptible(20);
+		trace_almk_shrink(selected_tasksize, ret,
+			other_free, other_file, selected_oom_score_adj);
+	} else {
+		trace_almk_shrink(1, ret, other_free, other_file, 0);
+		rcu_read_unlock();
 	}
+
 	lowmem_print(4, "lowmem_shrink %lu, %x, return %d\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
 	rcu_read_unlock();
@@ -308,6 +322,7 @@ static struct shrinker lowmem_shrinker = {
 static int __init lowmem_init(void)
 {
 	register_shrinker(&lowmem_shrinker);
+	vmpressure_notifier_register(&lmk_vmpr_nb);
 	return 0;
 }
 
