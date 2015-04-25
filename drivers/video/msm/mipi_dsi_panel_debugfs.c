@@ -390,7 +390,7 @@ int prepare_for_reg_access(struct msm_fb_data_type *mfd,
 	/* that handles the current power state */
 	mutex_lock(&mfd->power_lock);
 
-	if (mfd->panel_power_on) {
+	if (!mdp_fb_is_power_off(mfd)) {
 		dev_dbg(dev, "%s: panel is on, don't do anything\n", __func__);
 	} else {
 		dev_dbg(dev, "%s: panel is NOT on, power on stack\n", __func__);
