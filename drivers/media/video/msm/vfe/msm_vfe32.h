@@ -1,4 +1,5 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2012, 2014-2015,
+ * The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -816,7 +817,8 @@ struct vfe32_output_ch {
 /* when normal case, don't want to block error status. */
 /* bit 0-21 are error irq bits */
 #define VFE32_IMASK_COMMON_ERROR_ONLY_1       0x00407F00
-#define VFE32_IMASK_VFE_ERROR_ONLY_1          0x001F80FF
+#define VFE32_IMASK_VFE_ERROR_ONLY_1          0x003F80FF
+#define VFE32_IMASK_VFE_OVERFLOW_ERROR_ONLY_1    0x003FFF7E
 #define VFE32_IMASK_CAMIF_ERROR               (0x00000001<<0)
 #define VFE32_IMASK_BHIST_OVWR                (0x00000001<<1)
 #define VFE32_IMASK_STATS_CS_OVWR             (0x00000001<<2)

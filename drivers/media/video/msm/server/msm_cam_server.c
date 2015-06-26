@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012, 2015, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1927,6 +1927,32 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 			msm_cam_server_send_error_evt(p_mctl,
 				V4L2_EVENT_PRIVATE_START +
 				MSM_CAM_APP_NOTIFY_ERROR_EVENT);
+		break;
+	}
+	case NOTIFY_ISPIF_OVERFLOW_ERROR: {
+		pr_err("%s - received ISPIF overflow error!\n",
+			__func__);
+		break;
+	}
+	case NOTIFY_VFE_VIOLATION_ERROR:
+	case NOTIFY_VFE_AXI_ERROR:
+	case NOTIFY_VFE_WM_OVERFLOW_ERROR: {
+		pr_err("%s - received %d VFE error!\n",
+			__func__, notification);
+		break;
+	}
+	case NOTIFY_CSID_UNBOUNDED_FRAME_ERROR:
+	case NOTIFY_CSID_STREAM_UNDERFLOW_ERROR:
+	case NOTIFY_CSID_ECC_ERROR:
+	case NOTIFY_CSID_CRC_ERROR:
+	case NOTIFY_CSID_PHY_DL_OVERFLOW_ERROR: {
+		pr_err("%s - received %d CSID error!\n",
+			__func__, notification);
+		break;
+	}
+	case NOTIFY_CSIPHY_ERROR: {
+		pr_err("%s - received %d CSI_PHY error!\n",
+			__func__, notification);
 		break;
 	}
 	default:
