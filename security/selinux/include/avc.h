@@ -1,7 +1,7 @@
 /*
  * Access vector cache interface for object managers.
  *
- * Copyright (C) 2014 Sony Mobile Communications AB.
+ * Copyright (C) 2014 Sony Mobile Communications Inc.
  *
  * Author : Stephen Smalley, <sds@epoch.ncsc.mil>
  *
