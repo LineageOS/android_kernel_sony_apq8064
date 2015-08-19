@@ -1,6 +1,8 @@
 /*
  * drivers/gpu/ion/ion_system_heap.c
- * Copyright (c) 2011-2015,2016 The Linux Foundation. All rights reserved.
+ *
+ * Copyright (C) 2011 Google, Inc.
+ * Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -108,6 +110,9 @@ void *ion_system_heap_map_kernel(struct ion_heap *heap,
 		struct page **pages = kmalloc(
 					sizeof(struct page *) * table->nents,
 					GFP_KERNEL);
+
+		if (!pages)
+			return ERR_PTR(-ENOMEM);
 
 		for_each_sg(table->sgl, sg, table->nents, i)
 			pages[i] = sg_page(sg);
