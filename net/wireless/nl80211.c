@@ -6752,7 +6752,7 @@ static int nl80211_vendor_cmd(struct sk_buff *skb, struct genl_info *info)
 		}
 		rdev->cur_cmd_info = info;
 		err = rdev->wiphy.vendor_commands[i].doit(&rdev->wiphy, wdev,
-							   data, len);
+ 							   data, len);
 		rdev->cur_cmd_info = NULL;
 		return err;
 	}
