@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df3967d1_97a8cc77",
+        "filename": "arch/arm/configs/cm_fusion3_pollux_defconfig",
+        "patchSetId": 2
+      },
+      "lineNbr": 3653,
+      "author": {
+        "id": 19
+      },
+      "writtenOn": "2015-09-22T17:31:07Z",
+      "side": 1,
+      "message": "this is not required for log?",
+      "range": {
+        "startLine": 3653,
+        "startChar": 23,
+        "endLine": 3653,
+        "endChar": 24
+      },
+      "revId": "180d54189f0f33c1a5c32a2d45fe4938410a7780",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
