@@ -402,7 +402,7 @@ config USE_USER_ACCESSIBLE_TIMERS
 	  separately.
 
 config ZSMALLOC
-	bool "Memory allocator for compressed pages"
+	tristate "Memory allocator for compressed pages"
 	depends on MMU
 	default n
 	help
