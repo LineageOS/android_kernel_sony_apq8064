@@ -587,7 +587,7 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 	md = mmc_blk_get(bdev->bd_disk);
 	if (!md) {
 		err = -EINVAL;
-		goto blk_err;
+		goto cmd_done;
 	}
 
 	if (md->area_type & MMC_BLK_DATA_AREA_RPMB)
@@ -712,7 +712,6 @@ cmd_rel_host:
 
 cmd_done:
 	mmc_blk_put(md);
-blk_err:
 	kfree(idata->buf);
 	kfree(idata);
 	return err;
