@@ -738,6 +738,18 @@ int q6asm_audio_client_buf_alloc_contiguous(unsigned int dir,
 		goto fail;
 	}
 
+	/* check for integer overflow */
+	if ((bufcnt > 0) && ((INT_MAX / bufcnt) < bufsz)) {
+		pr_err("%s: integer overflow\n", __func__);
+		mutex_unlock(&ac->cmd_lock);
+		goto fail;
+	}
+	bytes_to_alloc = bufsz * bufcnt;
+
+	/* The size to allocate should be multiple of 4K bytes */
+	bytes_to_alloc = PAGE_ALIGN(bytes_to_alloc);
+
+
 	rc = ion_phys(buf[0].client, buf[0].handle,
 		  (ion_phys_addr_t *)&buf[0].phys, (size_t *)&len);
 	if (rc) {
