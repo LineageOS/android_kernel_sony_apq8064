@@ -4356,6 +4356,32 @@ static void __init apq8064_allocate_memory_regions(void)
 	apq8064_allocate_fb_region();
 }
 
+#ifdef CONFIG_INPUT_KEYRESET
+#include <linux/keyreset.h>
+/* keyreset platform device */
+static int fusion3_reset_keys_up[] = {
+	KEY_VOLUMEDOWN,
+	0
+};
+
+static struct keyreset_platform_data fusion3_reset_keys_pdata = {
+	.down_time_ms = 5000,
+	.keys_up = fusion3_reset_keys_up,
+	.keys_down = {
+		KEY_POWER,
+		KEY_VOLUMEUP,
+		0
+	},
+};
+
+struct platform_device fusion3_reset_keys_device = {
+	.name = KEYRESET_NAME,
+	.dev    = {
+		.platform_data = &fusion3_reset_keys_pdata,
+	},
+};
+#endif
+
 static void __init apq8064_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
@@ -4365,6 +4391,9 @@ static void __init apq8064_cdp_init(void)
 	msm_rotator_set_split_iommu_domain();
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
+#ifdef CONFIG_INPUT_KEYRESET
+	platform_device_register(&fusion3_reset_keys_device);
+#endif
 	apq8064_init_fb();
 	apq8064_init_gpu();
 	platform_add_devices(apq8064_footswitch, apq8064_num_footswitch);
