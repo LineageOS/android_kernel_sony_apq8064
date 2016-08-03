@@ -5909,7 +5909,8 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 
 	create_debugfs_entries(chip);
 	rc = create_sysfs_entries(chip);
-	if (rc < 0)
+	if (rc <
+	 0)
 		dev_err(chip->dev, "sysfs create failed rc=%d\n", rc);
 
 	/* register input device */
