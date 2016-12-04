@@ -1326,6 +1326,18 @@ static int synaptics_clearpad_set_power(struct synaptics_clearpad *this)
 				goto err_unlock;
 		}
 
+		if (this->easy_wakeup_config.gesture_enable) {
+			rc = synaptics_put_bit(this, SYNF(F01_RMI, CTRL, 0x00),
+				DEVICE_CONTROL_SLEEP_MODE_SENSOR_SLEEP,
+				DEVICE_CONTROL_SLEEP_MODE);
+			if (rc) {
+				dev_err(&this->pdev->dev,
+					"failed to enter sleep mode\n");
+				/* ignore the error and try to continue */
+			}
+			usleep_range(50000, 51000);
+		}
+
 		rc = synaptics_put_bit(this, SYNF(F01_RMI, CTRL, 0x00),
 			DEVICE_CONTROL_SLEEP_MODE_NORMAL_OPERATION,
 			DEVICE_CONTROL_SLEEP_MODE);
