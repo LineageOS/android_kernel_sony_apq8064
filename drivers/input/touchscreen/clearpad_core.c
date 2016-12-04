@@ -1816,7 +1816,7 @@ static int synaptics_clearpad_handle_gesture(struct synaptics_clearpad *this)
 	if (rc)
 		goto exit;
 
-	dev_info(&this->pdev->dev, "Gesture %d", wakeint);
+	dev_info(&this->pdev->dev, "Gesture %d\n", wakeint);
 
 	if (time_after(jiffies, this->ew_timeout))
 		this->ew_timeout = jiffies + msecs_to_jiffies(
@@ -2086,7 +2086,7 @@ static ssize_t synaptics_clearpad_fwdata_write(struct file *file,
 		size_t image_size;
 
 		if (size < HEADER_SIZE) {
-			dev_err(&this->pdev->dev, "invalid firmware size");
+			dev_err(&this->pdev->dev, "invalid firmware size\n");
 			size = -EINVAL;
 			goto exit;
 		}
@@ -2656,7 +2656,7 @@ static int synaptics_clearpad_pm_suspend(struct device *dev)
 
 	if (device_may_wakeup(dev)) {
 		enable_irq_wake(this->pdata->irq);
-		dev_info(&this->pdev->dev, "enable irq wake");
+		dev_info(&this->pdev->dev, "enable irq wake\n");
 	}
 	return 0;
 }
@@ -2670,7 +2670,7 @@ static int synaptics_clearpad_pm_resume(struct device *dev)
 
 	if (device_may_wakeup(dev)) {
 		disable_irq_wake(this->pdata->irq);
-		dev_info(&this->pdev->dev, "disable irq wake");
+		dev_info(&this->pdev->dev, "disable irq wake\n");
 	}
 
 	spin_lock_irqsave(&this->slock, flags);
@@ -2982,7 +2982,7 @@ static void synaptics_clearpad_analog_test(struct synaptics_clearpad *this,
 	for (k = 0; k < count; k++) {
 		s16 min_val = SHRT_MAX, max_val = SHRT_MIN;
 		dev_info(&this->pdev->dev,
-				"ANALOG: mode[%d], num[%d], rx[%d], tx[%d]",
+				"ANALOG: mode[%d], num[%d], rx[%d], tx[%d]\n",
 				mode, k, num_rx, num_tx);
 		LOCK(this);
 		this->state = SYN_STATE_WAIT_FOR_INT;
