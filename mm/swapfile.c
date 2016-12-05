@@ -704,7 +704,7 @@ int swp_swapcount(swp_entry_t entry)
 		n *= (SWAP_CONT_MAX + 1);
 	} while (tmp_count & COUNT_CONTINUED);
 out:
-	spin_unlock(&swap_lock);
+	spin_unlock(&p->lock);
 	return count;
 }
 
