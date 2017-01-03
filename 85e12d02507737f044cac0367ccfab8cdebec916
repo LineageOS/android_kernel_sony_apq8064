@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa3479d7_9bed97f2",
+        "filename": "drivers/cpufreq/cpufreq_limit.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2017-01-03T08:04:14Z",
+      "side": 0,
+      "message": "Re: comment on the commit message",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 34
+      },
+      "revId": "85e12d02507737f044cac0367ccfab8cdebec916",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa3479d7_7bbaf3e2",
+        "filename": "drivers/cpufreq/cpufreq_limit.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7880
+      },
+      "writtenOn": "2017-01-03T08:04:14Z",
+      "side": 0,
+      "message": "Re: comment on the commit message",
+      "range": {
+        "startLine": 97,
+        "startChar": 0,
+        "endLine": 98,
+        "endChar": 34
+      },
+      "revId": "85e12d02507737f044cac0367ccfab8cdebec916",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
