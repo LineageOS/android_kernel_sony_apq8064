@@ -770,6 +770,11 @@ static void receive_file_work(struct work_struct *data)
 		return;
 	}
 
+	if (count < 0) {
+		dev->xfer_result = -EINVAL;
+		return;
+	}
+
 	DBG(cdev, "receive_file_work(%lld)\n", count);
 
 	while (count > 0 || write_req) {
