@@ -342,7 +342,10 @@ static ssize_t lc898300_level_store(struct device *dev,
 		val = VIB_CMD_PWM_15_15;
 	}
 
+	mutex_lock(&data->lock);
 	vib_cmd_info->vib_cmd_intensity = val;
+	mutex_unlock(&data->lock);
+
 	rc = i2c_smbus_write_i2c_block_data(data->client, LC898300_REG_HBPW,
 				sizeof(struct lc898300_vib_cmd),
 				(void *)&vib_cmd_info->vib_cmd_intensity);
