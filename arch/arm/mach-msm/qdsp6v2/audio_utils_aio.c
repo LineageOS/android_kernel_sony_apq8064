@@ -610,10 +610,12 @@ static long audio_aio_process_event_req(struct q6audio_aio *audio,
 		rc = wait_event_interruptible(audio->event_wait,
 		audio_aio_events_pending(audio));
 	}
-	if (rc < 0)
-	pr_err("%s: audio process event failed, rc = %ld",
+
+	if (rc < 0) {
+		pr_err("%s: audio process event failed, rc = %ld",
 			__func__, rc);
 		return rc;
+	}
 
 	if (audio->event_abort) {
 		audio->event_abort = 0;
