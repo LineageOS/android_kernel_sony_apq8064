@@ -139,11 +139,7 @@
 
 #ifdef CONFIG_FB_MSM_MHL_SII8334
 #include <linux/mhl_sii8334.h>
-#ifndef CONFIG_PM8921_SONY_BMS_CHARGER
 #include <linux/mfd/pm8xxx/pm8921-charger.h>
-#else
-#include <linux/mfd/pm8xxx/pm8921-charger-sony.h>
-#endif
 #include <linux/usb/msm_hsusb.h>
 #endif
 
