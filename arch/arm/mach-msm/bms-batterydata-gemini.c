@@ -119,11 +119,7 @@ static struct pc_temp_ocv_lut  pc_temp_ocv = {
 	},
 };
 
-#ifdef CONFIG_PM8921_SONY_BMS_CHARGER
-struct bms_battery_data pm8921_battery_data __devinitdata = {
-#else
 struct bms_battery_data  oem_batt_data __devinitdata = {
-#endif
 	.fcc			= 6200,
 	.fcc_temp_lut		= &fcc_temp,
 	.fcc_sf_lut		= &fcc_sf,

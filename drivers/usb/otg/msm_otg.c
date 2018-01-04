@@ -38,11 +38,7 @@
 #include <linux/usb/msm_hsusb.h>
 #include <linux/usb/msm_hsusb_hw.h>
 #include <linux/regulator/consumer.h>
-#ifndef CONFIG_PM8921_SONY_BMS_CHARGER
 #include <linux/mfd/pm8xxx/pm8921-charger.h>
-#else
-#include <linux/mfd/pm8xxx/pm8921-charger-sony.h>
-#endif
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/power_supply.h>
 #ifdef CONFIG_MHL
