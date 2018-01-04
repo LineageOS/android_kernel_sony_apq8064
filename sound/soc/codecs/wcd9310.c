@@ -8888,6 +8888,13 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 	snd_soc_dapm_new_controls(dapm, tabla_dapm_aif_out_widgets,
 				  ARRAY_SIZE(tabla_dapm_aif_out_widgets));
 
+	if (TABLA_IS_1_X(control->version))
+		snd_soc_dapm_new_controls(dapm, tabla_1_x_dapm_widgets,
+					  ARRAY_SIZE(tabla_1_x_dapm_widgets));
+	else
+		snd_soc_dapm_new_controls(dapm, tabla_2_higher_dapm_widgets,
+				    ARRAY_SIZE(tabla_2_higher_dapm_widgets));
+
 	if (tabla->intf_type == WCD9XXX_INTERFACE_TYPE_I2C) {
 		snd_soc_dapm_new_controls(dapm, tabla_dapm_i2s_widgets,
 			ARRAY_SIZE(tabla_dapm_i2s_widgets));
