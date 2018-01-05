@@ -1590,6 +1590,7 @@ static void lm3533_set_startup_br(struct lm3533_data *lm)
 			dev_info(&lm->i2c->dev, "%s: %d on startup\n",
 				p->intf_name, p->brightness);
 			lm3533_led_brightness(&intf->ldev, p->brightness);
+			intf->ldev.brightness = p->brightness;
 		}
 		p++;
 	}
