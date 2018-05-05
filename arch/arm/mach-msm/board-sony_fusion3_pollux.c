@@ -98,7 +98,6 @@ struct lm3533_platform_data lm3533_pdata = {
 			.ctl = LM3533_HVB_MAP_LIN | LM3533_HVB_BR_CTL,
 			.fsc =  I_UA_TO_FSC(20200),
 			.iname = "lm3533-lcd-bl",
-			.fb_backlight = true,
 		},
 		[LM3533_CBNKC] = {
 			.pwm = 0,

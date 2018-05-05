@@ -1954,6 +1954,7 @@ static struct lp855x_platform_data lp8556_pdata = {
 	.size_program = ARRAY_SIZE(lp8556_eprom_arr),
 	.rom_data = lp8556_eprom_arr,
 	.cfg3 = 0x5e,
+	.fb_backlight = true,
 };
 #endif
 
