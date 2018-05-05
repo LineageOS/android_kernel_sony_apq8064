@@ -20,6 +20,10 @@
 #include <linux/lp855x.h>
 #include <linux/delay.h>
 
+#ifdef CONFIG_FB
+#include <linux/fb.h>
+#endif
+
 #define BRIGHTNESS_CTRL 0x00
 #define DEVICE_CTRL     0x01
 #define FULL_BRIGHTNESS 255
@@ -127,6 +131,10 @@ struct lp855x {
 	int stored_br;
 #ifdef CONFIG_DEBUG_FS
 	struct debug_dentry dd;
+#endif
+#ifdef CONFIG_FB
+	struct notifier_block fb_notifier;
+	bool fb_suspended;
 #endif
 };
 
@@ -492,6 +500,74 @@ static void lp855x_backlight_unregister(struct lp855x *lp)
 		backlight_device_unregister(lp->bl);
 }
 
+#ifdef CONFIG_FB
+static void lp855x_fb_suspend(struct lp855x *lp)
+{
+    struct device *dev = &lp->client->dev;
+
+    if (lp->fb_suspended)
+        return;
+
+    dev_info(dev, "%s\n", __func__);
+
+    if (lp->pdata->initial_brightness && lp->pdata->fb_backlight) {
+        lp855x_write_byte(lp, BRIGHTNESS_CTRL, 0);
+    }
+
+    lp->fb_suspended = true;
+}
+
+static void lp855x_fb_resume(struct lp855x *lp)
+{
+    struct device *dev = &lp->client->dev;
+
+    if (!lp->fb_suspended)
+        return;
+
+    dev_info(dev, "%s\n", __func__);
+
+    if (lp->pdata->initial_brightness && lp->pdata->fb_backlight) {
+        lp855x_write_byte(lp, BRIGHTNESS_CTRL, lp->bl->props.brightness);
+    }
+
+    lp->fb_suspended = false;
+}
+
+static int lp855x_fb_notifier_callback(struct notifier_block *self,
+        unsigned long event, void *fbdata)
+{
+    struct fb_event *evdata = fbdata;
+    int *blank;
+    struct lp855x *lp = container_of(self,
+            struct lp855x, fb_notifier);
+
+    if (evdata && evdata->data) {
+        if (event == FB_EVENT_BLANK) {
+            blank = evdata->data;
+            if (*blank == FB_BLANK_UNBLANK)
+                lp855x_fb_resume(lp);
+            else if (*blank == FB_BLANK_POWERDOWN)
+                lp855x_fb_suspend(lp);
+        }
+    }
+
+    return 0;
+}
+
+void lp855x_fb_backlight_setup(struct device *dev, struct lp855x *lp)
+{
+    lp->fb_suspended = false;
+    lp->fb_notifier.notifier_call = lp855x_fb_notifier_callback;
+
+    if (fb_register_client(&lp->fb_notifier)) {
+        dev_warn(dev, "%s: Failed to register fb_notifier\n", __func__);
+        return;
+    }
+
+    dev_info(dev, "%s: Registered fb_notifier\n", __func__);
+}
+#endif
+
 static int lp855x_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 {
 	struct lp855x *lp;
@@ -546,6 +622,10 @@ static int lp855x_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 	backlight_update_status(lp->bl);
 	lp855x_create_debugfs(lp);
 
+#ifdef CONFIG_FB
+	lp855x_fb_backlight_setup(&cl->dev, lp);
+#endif
+
 	return ret;
 
 err_setup:
@@ -565,6 +645,9 @@ static int __devexit lp855x_remove(struct i2c_client *cl)
 	backlight_update_status(lp->bl);
 	lp855x_remove_debugfs(lp);
 	lp855x_backlight_unregister(lp);
+#ifdef CONFIG_FB
+	fb_unregister_client(&lp->fb_notifier);
+#endif
 	kfree(lp);
 
 	return 0;

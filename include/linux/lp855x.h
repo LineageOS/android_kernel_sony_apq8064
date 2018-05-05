@@ -58,6 +58,9 @@ struct lp855x_platform_data {
 	int size_program;
 	struct lp855x_rom_data *rom_data;
 	u8 cfg3;
+#ifdef CONFIG_FB
+	bool fb_backlight; /* If this led controls a display backlight */
+#endif
 };
 
 #endif
