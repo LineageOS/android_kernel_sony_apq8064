@@ -189,6 +189,9 @@ struct lm3533_platform_data {
 	int (*als_off)(struct device *dev);
 	/* pointer to NULL-terminated array */
 	struct lm3533_startup_brightenss *startup_brightness;
+#ifdef CONFIG_FB
+	bool fb_backlight; /* If this led controls a display backlight */
+#endif
 };
 
 #endif

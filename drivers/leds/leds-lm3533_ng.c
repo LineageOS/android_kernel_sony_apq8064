@@ -21,6 +21,10 @@
 #include <linux/pm_runtime.h>
 #include <linux/moduleparam.h>
 
+#ifdef CONFIG_FB
+#include <linux/fb.h>
+#endif
+
 // Hack: default (stock) minimum brightness value
 #define MINIMUM_STOCK_BL_LEVEL 10
 
@@ -100,6 +104,10 @@ struct lm3533_data {
 	u8 als_reg_curr_on_suspend;
 	u8 als_reg_curr_saved;
 	bool lit_on_suspend;
+#ifdef CONFIG_FB
+	struct notifier_block fb_notifier;
+	bool fb_suspended;
+#endif
 };
 
 enum {
@@ -1647,6 +1655,87 @@ static const struct attribute *lm3533_attrs[] = {
 	NULL,
 };
 
+#ifdef CONFIG_FB
+static void lm3533_fb_suspend(struct lm3533_data *lm)
+{
+	struct device *dev = &lm->i2c->dev;
+	int i;
+
+	if (lm->fb_suspended)
+		return;
+
+	dev_info(dev, "%s\n", __func__);
+
+	for (i = 0; i < LM3533_BANK_NUM && lm->intf[i]; i++) {
+		struct lm3533_intf *intf =
+			lm3533_intf_get(lm, lm->intf[i]->ldev.name);
+		if (lm->pdata->startup_brightness &&
+				lm->pdata->fb_backlight) {
+			lm3533_led_brightness(&intf->ldev, 0);
+		}
+	}
+
+	lm->fb_suspended = true;
+}
+
+static void lm3533_fb_resume(struct lm3533_data *lm)
+{
+	struct device *dev = &lm->i2c->dev;
+	int i;
+
+	if (!lm->fb_suspended)
+		return;
+
+	dev_info(dev, "%s\n", __func__);
+
+	for (i = 0; i < LM3533_BANK_NUM && lm->intf[i]; i++) {
+		struct lm3533_intf *intf =
+			lm3533_intf_get(lm, lm->intf[i]->ldev.name);
+		if (lm->pdata->startup_brightness &&
+				lm->pdata->fb_backlight) {
+			lm3533_led_brightness(&intf->ldev, intf->ldev.brightness);
+		}
+	}
+
+	lm->fb_suspended = false;
+}
+
+static int lm3533_fb_notifier_callback(struct notifier_block *self,
+		unsigned long event, void *fbdata)
+{
+	struct fb_event *evdata = fbdata;
+	int *blank;
+	struct lm3533_data *lm = container_of(self,
+			struct lm3533_data, fb_notifier);
+
+	if (evdata && evdata->data) {
+		if (event == FB_EVENT_BLANK) {
+			blank = evdata->data;
+			if (*blank == FB_BLANK_UNBLANK)
+				lm3533_fb_resume(lm);
+			else if (*blank == FB_BLANK_POWERDOWN)
+				lm3533_fb_suspend(lm);
+		}
+	}
+
+	return 0;
+}
+
+void lm3533_fb_backlight_setup(struct device *dev,
+		struct lm3533_data *lm)
+{
+	lm->fb_suspended = false;
+	lm->fb_notifier.notifier_call = lm3533_fb_notifier_callback;
+
+	if (fb_register_client(&lm->fb_notifier)) {
+		dev_warn(dev, "%s: Failed to register fb_notifier\n", __func__);
+		return;
+	}
+
+	dev_info(dev, "%s: Registered fb_notifier\n", __func__);
+}
+#endif
+
 static int __devinit lm3533_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1726,6 +1815,11 @@ static int __devinit lm3533_probe(struct i2c_client *client,
 		goto err_file_create;
 	}
 	dev_info(dev, "%s: completed.\n", __func__);
+
+#ifdef CONFIG_FB
+	lm3533_fb_backlight_setup(&client->dev, lm);
+#endif
+
 	return 0;
 
 err_file_create:
@@ -1762,6 +1856,9 @@ static int __devexit lm3533_remove(struct i2c_client *client)
 	lm3533_cleanup(lm);
 	if (lm->pdata->teardown)
 		lm->pdata->teardown(&client->dev);
+#ifdef CONFIG_FB
+	fb_unregister_client(&lm->fb_notifier);
+#endif
 	mutex_destroy(&lm->lock);
 	kfree(lm);
 	return 0;
