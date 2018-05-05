@@ -125,6 +125,7 @@ struct lm3533_platform_data lm3533_pdata = {
 	.als_control = LM3533_ALS_17920,
 	.als_input_current = ALS_CUR_UA_TO_REG(150),
 	.startup_brightness = lm3533_startup_brightnesses,
+	.fb_backlight = true,
 };
 
 int usb_phy_init_seq_host[] = {
