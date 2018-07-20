@@ -19,26 +19,10 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/pm_runtime.h>
-#include <linux/moduleparam.h>
 
 #ifdef CONFIG_FB
 #include <linux/fb.h>
 #endif
-
-// Hack: default (stock) minimum brightness value
-#define MINIMUM_STOCK_BL_LEVEL 10
-
-// Hack: decrement the value of Auto Brightness
-static int lm3533_bl_reduction = 0;
-module_param(lm3533_bl_reduction, int, 0755);
-
-// Hack: the minimal level of Auto Brightness for decreasing
-static int lm3533_bl_brightness_min = MINIMUM_STOCK_BL_LEVEL;
-module_param(lm3533_bl_brightness_min, int, 0755);
-
-// Hack: enable brightness logging for debug
-static int lm3533_bl_brightness_log = 0;
-module_param(lm3533_bl_brightness_log, int, 0755);
 
 static int autosuspend_delay_ms = 100;
 module_param(autosuspend_delay_ms, int, S_IRUGO);
@@ -721,39 +705,14 @@ static void lm3533_led_brightness(struct led_classdev *led_cdev,
 	struct device *dev = led_cdev->dev->parent;
 	struct lm3533_data *lm = dev_get_drvdata(dev);
 	struct lm3533_intf *intf = ldev_to_intf(led_cdev);
-	enum lm3533_control_bank b = 0;
+	enum lm3533_control_bank b;
 	int rc;
 	u8 bena;
 
 	if (value <= LED_OFF)
-		value = LED_OFF;
+		value = 0;
 	else if (value >= LED_FULL)
-		value = LED_FULL;
-
-	/*
-	 * The lowest userspace brightness value is MINIMUM_STOCK_BL_LEVEL (10).
-	 * If the brightness value is less or equal to lm3533_bl_brightness_min, 
-	 * we can reduce this value at lm3533_bl_reduction.
-	 * As default, lm3533_bl_brightness_min = MINIMUM_STOCK_BL_LEVEL
-	 */
-	if (lm3533_bl_brightness_log > 0)
-	{
-		pr_info("brightness-hack: %s: brightness %d -> %d\n", led_cdev->name, intf->brightness, value);
-		pr_info("brightness-hack: brightness before corrections: %d\n", value);
-	}
-	if ((lm3533_bl_reduction > 0) && (value <= lm3533_bl_brightness_min) && (value > 0))
-	{
-		if (lm3533_bl_reduction >= LED_FULL)
-			lm3533_bl_reduction = LED_OFF;
-		if ((value - lm3533_bl_reduction) <= LED_OFF)
-			value = LED_OFF;
-		else
-			value = value - lm3533_bl_reduction;
-		if (value < 0)
-			value = 0;
-	}
-	if (lm3533_bl_brightness_log > 0)
-		pr_info("brightness-hack: brightness after corrections: %d\n", value);
+		value = 255;
 
 	dev_dbg(dev, "%s: brightness %d -> %d, als %d\n", led_cdev->name,
 			intf->brightness, value, intf->als);
@@ -788,9 +747,6 @@ static void lm3533_led_brightness(struct led_classdev *led_cdev,
 		pm_runtime_put_autosuspend(&lm->i2c->dev);
 	}
 	intf->brightness = value;
-
-	if (lm3533_bl_brightness_log > 0)
-		pr_info("brightness-hack: brightness result: %d\n", value);
 }
 
 static int lm3533_blink_set(struct led_classdev *led_cdev,
