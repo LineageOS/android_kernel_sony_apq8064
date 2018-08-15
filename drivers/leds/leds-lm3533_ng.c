@@ -1626,7 +1626,7 @@ static void lm3533_fb_suspend(struct lm3533_data *lm)
 		struct lm3533_intf *intf =
 			lm3533_intf_get(lm, lm->intf[i]->ldev.name);
 		if (lm->pdata->startup_brightness &&
-				lm->pdata->fb_backlight) {
+				lm->pdata->b_cnf[i].fb_backlight) {
 			lm3533_led_brightness(&intf->ldev, 0);
 		}
 	}
@@ -1648,7 +1648,7 @@ static void lm3533_fb_resume(struct lm3533_data *lm)
 		struct lm3533_intf *intf =
 			lm3533_intf_get(lm, lm->intf[i]->ldev.name);
 		if (lm->pdata->startup_brightness &&
-				lm->pdata->fb_backlight) {
+				lm->pdata->b_cnf[i].fb_backlight) {
 			lm3533_led_brightness(&intf->ldev, intf->ldev.brightness);
 		}
 	}
