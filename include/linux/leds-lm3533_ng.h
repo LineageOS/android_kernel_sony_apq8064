@@ -155,6 +155,9 @@ struct lm3533_bank_config {
 	u8 ctl; /* ORed from enum lm3533_br_ctl */
 	u8 fsc; /* use I_UA_TO_FSC(ua)          */
 	const char *iname; /* interface name */
+#ifdef CONFIG_FB
+	bool fb_backlight; /* If this led controls a display backlight */
+#endif
 };
 
 struct lm3533_led_config {
@@ -189,9 +192,6 @@ struct lm3533_platform_data {
 	int (*als_off)(struct device *dev);
 	/* pointer to NULL-terminated array */
 	struct lm3533_startup_brightenss *startup_brightness;
-#ifdef CONFIG_FB
-	bool fb_backlight; /* If this led controls a display backlight */
-#endif
 };
 
 #endif
