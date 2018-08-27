@@ -20,6 +20,10 @@
 #include <linux/lp855x.h>
 #include <linux/delay.h>
 
+#ifdef CONFIG_FB
+#include <linux/fb.h>
+#endif
+
 #define BRIGHTNESS_CTRL 0x00
 #define DEVICE_CTRL     0x01
 #define FULL_BRIGHTNESS 255
@@ -127,6 +131,10 @@ struct lp855x {
 	int stored_br;
 #ifdef CONFIG_DEBUG_FS
 	struct debug_dentry dd;
+#endif
+#ifdef CONFIG_FB
+	struct notifier_block fb_notifier;
+	bool fb_suspended;
 #endif
 };
 
