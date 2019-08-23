@@ -405,11 +405,6 @@ void vmpressure_prio(gfp_t gfp, struct mem_cgroup *memcg, int prio)
 		return;
 
 	vmpr = memcg_to_vmpressure(memcg);
-
-	if (!vmpr) {
-		return;
-	}
-
 	mutex_lock(&vmpr->sr_lock);
 	window_size = vmpr->window_size;
 	mutex_unlock(&vmpr->sr_lock);
